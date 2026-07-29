@@ -5,6 +5,21 @@
 ================================================================================
 --]]
 
+-- ===== EXECUTOR FUNCTION FALLBACK (ANTI CRASH) =====
+local checkcaller = checkcaller or function() return false end
+local hookfunction = hookfunction
+local getrawmetatable = getrawmetatable
+local setreadonly = setreadonly or function() end
+local isfolder = isfolder or function() return false end
+local makefolder = makefolder or function() end
+local listfiles = listfiles or function() return {} end
+local writefile = writefile or function() end
+local readfile = readfile or function() return nil end
+local isfile = isfile or function() return false end
+local delfile = delfile or function() end
+local setclipboard = setclipboard or function() end
+local request = request or http_request or (syn and syn.request)
+
 -- ===== VERSION & RELOAD GUARD =====
 local VERSION = "2.0.1"
 
@@ -35,7 +50,7 @@ local Mouse = LP:GetMouse()
 
 -- ===== PLATFORM DETECTION =====
 local IsMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-local isMobile = IsMobile -- Alias for NO MERCY logic
+local isMobile = IsMobile
 
 local DrawingAvailable = (function()
     if isMobile then return false end
@@ -45,19 +60,13 @@ end)()
 
 -- ===== NMHUB GLOBAL TABLE =====
 local NMHUB = {
-    Flags = {},
-    Toggles = {},
-    Loops = {},
-    Connections = {},
-    GuiElements = {},
+    Flags = {}, Toggles = {}, Loops = {}, Connections = {}, GuiElements = {},
     HookedRemotes = {},
     OriginalState = {
         CanCollide = setmetatable({}, {__mode = "k"}),
-        Lighting = {},
-        Terrain = {},
+        Lighting = {}, Terrain = {},
         Textures = setmetatable({}, {__mode = "k"}),
-        WalkSpeed = 16,
-        JumpPower = 50,
+        WalkSpeed = 16, JumpPower = 50,
     },
     Ready = false,
 }
@@ -65,10 +74,7 @@ local NMHUB = {
 local autoSaveConfig = function() end
 
 function NMHUB:StopLoop(name)
-    if self.Loops[name] then
-        pcall(task.cancel, self.Loops[name])
-        self.Loops[name] = nil
-    end
+    if self.Loops[name] then pcall(task.cancel, self.Loops[name]); self.Loops[name] = nil end
 end
 
 function NMHUB:Disconnect(name)
@@ -78,7 +84,7 @@ function NMHUB:Disconnect(name)
     end
 end
 
--- ===== OPTIMIZED HOOKS & ANTI-KICK =====
+-- ===== SAFE HOOKS =====
 pcall(function()
     if hookfunction then
         NMHUB.Connections.OldKick = hookfunction(LP.Kick, function() return nil end)
@@ -93,6 +99,7 @@ pcall(function()
 end)
 
 function NMHUB:InstallRemoteHook(remotePath, callback)
+    if not hookfunction then return false end
     local ok, remote = pcall(function()
         local node = ReplicatedStorage
         for segment in remotePath:gmatch("[^.]+") do
@@ -103,22 +110,19 @@ function NMHUB:InstallRemoteHook(remotePath, callback)
     end)
     if not ok or not remote or not remote:IsA("RemoteEvent") then return false end
 
-    local oldFireServer
-    oldFireServer = hookfunction(remote.FireServer, newcclosure(function(...)
+    local oldFireServer = remote.FireServer
+    local hookedFn = hookfunction(remote.FireServer, newcclosure(function(...)
         if _G.NOMERCY_Shutdown then return oldFireServer(...) end
         return callback(oldFireServer, ...)
     end))
 
-    table.insert(self.HookedRemotes, { remote = remote, old = oldFireServer })
+    if hookedFn then
+        table.insert(self.HookedRemotes, { remote = remote, old = hookedFn })
+    end
     return true
 end
 
 local _TeleportFallGraceUntil = 0
-NMHUB:InstallRemoteHook("Remotes.Mechanics.Fall", function(original, ...)
-    if tick() < _TeleportFallGraceUntil then return nil end
-    return original(...)
-end)
-
 local function performSafeTeleport(targetCFrame, offset)
     local char = LP.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
@@ -141,16 +145,13 @@ end
 -- ============================================================================
 local WindUI
 do
-    local ok, result = pcall(function()
-        return loadstring(game:HttpGet(
-            "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-        ))()
+    local ok, err = pcall(function()
+        WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+        if not WindUI then WindUI = _G.WindUI or getgenv().WindUI end
     end)
-    if ok and result then
-        WindUI = result
-    else
-        warn("[King Akbar] WindUI gagal load: " .. tostring(result))
-        return
+    if not ok or not WindUI then
+        warn("[King Akbar] WindUI gagal load: " .. tostring(err))
+        -- Jangan return, biarkan splash screen tetap muncul biar gak kelihatannya nge-blank
     end
 end
 
@@ -266,7 +267,16 @@ do
         end
         task.wait(0.8); sg:Destroy()
     end)
-    task.wait(3)
+    task.wait(1) -- Tunggu 1 detik biar WindUI sempat load di background
+end
+
+if not WindUI then
+    game.StarterGui:SetCore("SendNotification", {
+        Title = "King Akbar Error",
+        Text = "Gagal load WindUI! Coba gunakan eksekutor yang support http.request.",
+        Duration = 10
+    })
+    return
 end
 
 -- ============================================================================
@@ -315,16 +325,15 @@ local TabSettings   = Window:Tab({ Title = "Settings",    Icon = "settings" })
 InfoTab:Select()
 
 -- ============================================================================
--- // 5. INFO TAB (DISCORD & CREDITS) - KEPT AS REQUESTED
+-- // 5. INFO TAB (DISCORD & CREDITS)
 -- ============================================================================
 local memberCount = "N/A"
 local onlineCount = "N/A"
 
 local function fetchDiscordInfo()
-    local req = request or http_request or (syn and syn.request)
-    if not req then return end
+    if not request then return end
     local ok, res = pcall(function()
-        return req({
+        return request({
             Url     = "https://discord.com/api/v9/invites/XmWf3YQPpZ?with_counts=true",
             Method  = "GET",
             Headers = { ["User-Agent"] = "Mozilla/5.0" }
@@ -335,10 +344,14 @@ local function fetchDiscordInfo()
         if ok2 and data then
             memberCount = tostring(data.approximate_member_count   or "N/A")
             onlineCount = tostring(data.approximate_presence_count or "N/A")
+            if ServerInfo then
+                pcall(function()
+                    ServerInfo:SetDesc("• Member Count: " .. memberCount .. "\n• Online Count: " .. onlineCount)
+                end)
+            end
         end
     end
 end
-fetchDiscordInfo()
 
 local ServerInfo = InfoTab:Paragraph({
     Title         = "King Vypers | Official",
@@ -352,19 +365,21 @@ local ServerInfo = InfoTab:Paragraph({
             Color    = Color3.fromHex("#5707AB"),
             Icon     = "link",
             Callback = function()
-                if setclipboard then setclipboard("https://discord.gg/XmWf3YQPpZ") end
+                pcall(setclipboard, "https://discord.gg/XmWf3YQPpZ")
             end
         },
         {
             Title    = "Update Info",
             Icon     = "refresh-cw",
             Callback = function()
-                fetchDiscordInfo()
-                ServerInfo:SetDesc("• Member Count: " .. memberCount .. "\n• Online Count: " .. onlineCount)
+                task.spawn(fetchDiscordInfo)
             end
         }
     }
 })
+
+-- Jalankan fetch di background biar UI gak nge-hang
+task.spawn(fetchDiscordInfo)
 
 -- ===== GAME STATE & REMOTES =====
 local CollectionService = game:GetService("CollectionService")
@@ -1036,7 +1051,7 @@ VisualSettings:Slider({
         autoSaveConfig()
     end,
 })
-end -- do (Visual Tab)
+end
 
 -- ===== KILLER TAB =====
 local startKillerDispatcher = function() end
@@ -1931,9 +1946,10 @@ local function _setupPersistentHooks()
 end
 
 local function _setupNoSlowdownHook()
+    if not getrawmetatable or not setreadonly then return end
     pcall(function()
         local ok, mt = pcall(function() return getrawmetatable(game) end)
-        if not (ok and mt and setreadonly) then return end
+        if not (ok and mt) then return end
         setreadonly(mt, false)
         local oldNI = mt.__newindex
         mt.__newindex = newcclosure(function(t, k, v)
@@ -2477,7 +2493,9 @@ startFleeKiller = function()
         if not pos then return end
         performSafeTeleport(CFrame.new(pos + Vector3.new(0, 3, 4)))
         _lastFlee = tick()
-        WindUI:Notify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Icon = "zap", Duration = 2 })
+        pcall(function()
+            WindUI:Notify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Icon = "zap", Duration = 2 })
+        end)
     end)
     NMHUB.Connections.FleeKiller = _fleeConn
 end
@@ -2504,12 +2522,14 @@ startKillerAlert = function()
         local inRange = dist <= alertRange
         if inRange and not _wasInRange then
             if (tick() - _lastAlert) > 3.0 then
-                WindUI:Notify({
-                    Title = "⚠ Killer Nearby!",
-                    Content = string.format("Killer is %.0f studs away!", dist),
-                    Icon   = "alert-triangle",
-                    Duration = 3,
-                })
+                pcall(function()
+                    WindUI:Notify({
+                        Title = "⚠ Killer Nearby!",
+                        Content = string.format("Killer is %.0f studs away!", dist),
+                        Icon   = "alert-triangle",
+                        Duration = 3,
+                    })
+                end)
                 _lastAlert = tick()
             end
         end
@@ -3041,7 +3061,7 @@ TeleportMapObjects:Button({
     Title    = "Teleport to Generator",
     Callback = function()
         if _selGen and doTeleport(_selGen) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Duration = 3 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Duration = 3 }) end)
     end,
 })
 
@@ -3056,7 +3076,7 @@ TeleportMapObjects:Button({
     Title    = "Teleport to Hook",
     Callback = function()
         if _selHook and doTeleport(_selHook) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Duration = 3 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Duration = 3 }) end)
     end,
 })
 
@@ -3071,7 +3091,7 @@ TeleportMapObjects:Button({
     Title    = "Teleport to Pallet",
     Callback = function()
         if _selPal and doTeleport(_selPal) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Duration = 3 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Duration = 3 }) end)
     end,
 })
 
@@ -3086,7 +3106,7 @@ TeleportMapObjects:Button({
     Title    = "Teleport to Window",
     Callback = function()
         if _selWin and doTeleport(_selWin) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Duration = 3 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Duration = 3 }) end)
     end,
 })
 
@@ -3101,7 +3121,7 @@ TeleportMapObjects:Button({
     Title    = "Teleport to Gate",
     Callback = function()
         if _selGate and doTeleport(_selGate) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Duration = 3 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Duration = 3 }) end)
     end,
 })
 
@@ -3119,7 +3139,7 @@ TeleportMapObjects:Button({
         refreshDropdown("TpPallet",    _tpPalList)
         refreshDropdown("TpWindow",    _tpWinList)
         refreshDropdown("TpGate",      _tpGateList)
-        WindUI:Notify({ Title = "Teleport", Content = "Map objects refreshed.", Duration = 2 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "Map objects refreshed.", Duration = 2 }) end)
     end,
 })
 
@@ -3137,13 +3157,13 @@ TeleportPlayers:Button({
     Title    = "Teleport to Player",
     Callback = function()
         if not _selPlr then
-            WindUI:Notify({ Title = "Teleport", Content = "No player selected.", Duration = 3 })
+            pcall(function() WindUI:Notify({ Title = "Teleport", Content = "No player selected.", Duration = 3 }) end)
             return
         end
         local tChar = _selPlr.Character
         local tHRP  = tChar and tChar:FindFirstChild("HumanoidRootPart")
         if not tHRP then
-            WindUI:Notify({ Title = "Teleport", Content = "Player has no active character.", Duration = 3 })
+            pcall(function() WindUI:Notify({ Title = "Teleport", Content = "Player has no active character.", Duration = 3 }) end)
             return
         end
         local char = getChar(); if not char then return end
@@ -3158,7 +3178,7 @@ TeleportPlayers:Button({
         rebuildPlayerList()
         _selPlr = nil
         refreshDropdown("TpPlayer", _tpPlrList)
-        WindUI:Notify({ Title = "Teleport", Content = "Player list refreshed.", Duration = 2 })
+        pcall(function() WindUI:Notify({ Title = "Teleport", Content = "Player list refreshed.", Duration = 2 }) end)
     end,
 })
 
@@ -3530,22 +3550,24 @@ local SettingsSection = TabSettings:Section({ Title = "Script Management" })
 SettingsSection:Button({
     Title = "Destroy Script",
     Callback = function()
-        WindUI:Popup({
-            Title = "Konfirmasi Destroy",
-            Content = "Yakin ingin destroy script?\nSemua fitur akan berhenti.",
-            Buttons = {
-                {
-                    Title = "Ya, Destroy",
-                    Callback = function()
-                        _G.NOMERCY_Shutdown = true
-                        if type(_G.NOMERCY_ShutdownHandler) == "function" then
-                            _G.NOMERCY_ShutdownHandler()
+        pcall(function()
+            WindUI:Popup({
+                Title = "Konfirmasi Destroy",
+                Content = "Yakin ingin destroy script?\nSemua fitur akan berhenti.",
+                Buttons = {
+                    {
+                        Title = "Ya, Destroy",
+                        Callback = function()
+                            _G.NOMERCY_Shutdown = true
+                            if type(_G.NOMERCY_ShutdownHandler) == "function" then
+                                _G.NOMERCY_ShutdownHandler()
+                            end
                         end
-                    end
-                },
-                { Title = "Batal" }
-            }
-        })
+                    },
+                    { Title = "Batal" }
+                }
+            })
+        end)
     end,
 })
 end
@@ -3733,22 +3755,24 @@ ConfigSection:Button({
     Callback = function()
         local name = NMHUB.Flags.SelectedConfig
         if not name or name == "" then return end
-        WindUI:Popup({
-            Title = "Confirm Delete",
-            Content = "Delete config '" .. name .. "'?",
-            Buttons = {
-                {
-                    Title = "Yes, Delete",
-                    Callback = function()
-                        if delfile then
-                            pcall(delfile, ConfigFolder .. "/" .. name .. ".json")
-                            ConfigDropdown:Refresh(getConfigList())
+        pcall(function()
+            WindUI:Popup({
+                Title = "Confirm Delete",
+                Content = "Delete config '" .. name .. "'?",
+                Buttons = {
+                    {
+                        Title = "Yes, Delete",
+                        Callback = function()
+                            if delfile then
+                                pcall(delfile, ConfigFolder .. "/" .. name .. ".json")
+                                ConfigDropdown:Refresh(getConfigList())
+                            end
                         end
-                    end
-                },
-                { Title = "Cancel" }
-            }
-        })
+                    },
+                    { Title = "Cancel" }
+                }
+            })
+        end)
     end,
 })
 
@@ -3910,7 +3934,7 @@ local function _CreateMobileUI()
     Instance.new("UICorner", cdot).CornerRadius = UDim.new(1, 0)
     _MobileGui.RadarFrame = radarF
 
-    for i = 1, 20 do
+    for i = 1,20 do
         local d = Instance.new("Frame")
         d.Size = UDim2.new(0, 8, 0, 8)
         d.BackgroundColor3 = Color3.fromRGB(255, 65, 65)
@@ -3918,7 +3942,7 @@ local function _CreateMobileUI()
         Instance.new("UICorner", d).CornerRadius = UDim.new(1, 0)
         _MobileGui.RadarDots[i] = d
     end
-    for i = 1, 30 do
+    for i = 1,30 do
         local d = Instance.new("Frame")
         d.Size = UDim2.new(0, 6, 0, 6)
         d.BackgroundColor3 = Color3.fromRGB(255, 180, 50)
@@ -3978,26 +4002,37 @@ end)
 -- ============================================================================
 -- // 8. OPEN BUTTON & FPS TAG (KING AKBAR STYLE)
 -- ============================================================================
-Window:EditOpenButton({
-    Title           = "Open King Akbar",
-    Icon            = "crown",
-    CornerRadius    = UDim.new(0, 12),
-    StrokeThickness = 2,
-    Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromHex("#ffffff")),
-        ColorSequenceKeypoint.new(1, Color3.fromHex("#0a0a0a")),
-    }),
-    Enabled   = true,
-    Draggable = true,
-})
+pcall(function()
+    Window:EditOpenButton({
+        Title           = "Open King Akbar",
+        Icon            = "crown",
+        CornerRadius    = UDim.new(0, 12),
+        StrokeThickness = 2,
+        Color = ColorSequence.new({
+            ColorSequenceKeypoint.new(0, Color3.fromHex("#ffffff")),
+            ColorSequenceKeypoint.new(1, Color3.fromHex("#0a0a0a")),
+        }),
+        Enabled   = true,
+        Draggable = true,
+    })
+end)
 
-local FpsTag = Window:Tag({
-    Title = "Fps: ...",
-    Color = WindUI:Gradient({
-        [0]   = { Color = Color3.fromHex("#0a0a0a"), Transparency = 0 },
-        [100] = { Color = Color3.fromHex("#888888"), Transparency = 0 },
-    }, { Rotation = 45 }),
-})
+local FpsTag
+pcall(function()
+    local fpsColor
+    pcall(function()
+        fpsColor = WindUI:Gradient({
+            [0]   = { Color = Color3.fromHex("#0a0a0a"), Transparency = 0 },
+            [100] = { Color = Color3.fromHex("#888888"), Transparency = 0 },
+        }, { Rotation = 45 })
+    end)
+    fpsColor = fpsColor or Color3.fromRGB(255, 255, 255)
+
+    FpsTag = Window:Tag({
+        Title = "Fps: ...",
+        Color = fpsColor,
+    })
+end)
 
 task.spawn(function()
     while task.wait(1) do
@@ -4014,11 +4049,13 @@ end)
 -- ============================================================================
 -- // INIT
 -- ============================================================================
-Window:SetIconSize(47)
-WindUI:SetTheme("Dark")
+pcall(function() Window:SetIconSize(47) end)
+pcall(function() WindUI:SetTheme("Dark") end)
 
-WindUI:Notify({
-    Title    = "👑 KING AKBAR - VIOLENCE DISTRICT",
-    Content  = "UI bersih & fitur lengkap. Tinggal santai!",
-    Duration = 5,
-})
+pcall(function()
+    WindUI:Notify({
+        Title    = "👑 KING AKBAR - VIOLENCE DISTRICT",
+        Content  = "UI bersih & fitur lengkap. Tinggal santai!",
+        Duration = 5,
+    })
+end)
