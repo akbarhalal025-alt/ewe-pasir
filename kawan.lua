@@ -1,15 +1,15 @@
 -- ===== VERSION & RELOAD GUARD =====
-local VERSION = "3.0.0"
+local VERSION = "2.0.1"
 
-if _G.KINGAKBAR_ViolenceDistrict_Loaded then
-    warn("[King Akbar] Violence District already loaded..")
-    if type(_G.KINGAKBAR_ShutdownHandler) == "function" then
-        pcall(_G.KINGAKBAR_ShutdownHandler)
+if _G.NOMERCY_ViolenceDistrict_Loaded then
+    warn("[King Vypers] Violence District already loaded..")
+    if type(_G.NOMERCY_ShutdownHandler) == "function" then
+        pcall(_G.NOMERCY_ShutdownHandler)
     end
     task.wait(0.5)
 end
-_G.KINGAKBAR_ViolenceDistrict_Loaded = true
-_G.KINGAKBAR_Shutdown = false
+_G.NOMERCY_ViolenceDistrict_Loaded = true
+_G.NOMERCY_Shutdown = false
 
 -- ===== SERVICES =====
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -58,7 +58,7 @@ function NMHUB:StopLoop(name)
     if self.Loops[name] then
         local ok = pcall(task.cancel, self.Loops[name])
         if not ok then
-            warn("[King Akbar] Failed to cancel loop:", name)
+            warn("[King Vypers] Failed to cancel loop:", name)
         end
         self.Loops[name] = nil
     end
@@ -71,7 +71,7 @@ function NMHUB:Disconnect(name)
             self.Connections[name]:Disconnect()
         end)
         if not ok then
-            warn("[King Akbar] Failed to disconnect:", name)
+            warn("[King Vypers] Failed to disconnect:", name)
         end
         self.Connections[name] = nil
     end
@@ -108,7 +108,7 @@ function NMHUB:InstallRemoteHook(remotePath, callback)
 
     local oldFireServer
     oldFireServer = hookfunction(remote.FireServer, newcclosure(function(...)
-        if _G.KINGAKBAR_Shutdown then return oldFireServer(...) end
+        if _G.NOMERCY_Shutdown then return oldFireServer(...) end
         return callback(oldFireServer, ...)
     end))
 
@@ -146,115 +146,24 @@ local function performSafeTeleport(targetCFrame, offset)
     return true
 end
 
--- ===== WINDUI LIBRARY LOAD =====
-local WindUI
+-- ===== VYPERSLIB LOAD =====
+local Vypers
 local loadSuccess, loadError = pcall(function()
-    WindUI = loadstring(game:HttpGet(
-        "https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
+    Vypers = loadstring(game:HttpGet(
+        "https://raw.githubusercontent.com/AwoakwoakSikat/uikings/refs/heads/main/VypersLib33.lua"
     ))()
 end)
 
-if not loadSuccess or not WindUI then
-    local errorMsg = "[King Akbar] CRITICAL: Could not load WindUI Library.\nError: " 
+if not loadSuccess or not Vypers then
+    local errorMsg = "[King Vypers] CRITICAL: Could not load VypersLib Library.\nError: " 
         .. tostring(loadError or "Unknown error")
     error(errorMsg)
     return
 end
 
--- ===== SPLASH SCREEN (LOADING SEBELUM SCRIPT MUNCUL) =====
-do
-    local sg = Instance.new("ScreenGui")
-    sg.Name = "KingAkbarSplash"; sg.ResetOnSpawn = false
-    sg.IgnoreGuiInset = true; sg.DisplayOrder = 999
-    sg.Parent = LP:WaitForChild("PlayerGui")
-
-    local bg = Instance.new("Frame", sg)
-    bg.Size = UDim2.fromScale(1,1); bg.BackgroundColor3 = Color3.fromHex("#0a0a0a")
-    bg.BorderSizePixel = 0; bg.ZIndex = 1
-
-    local grad = Instance.new("UIGradient", bg)
-    grad.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromHex("#0a0a0a")),
-        ColorSequenceKeypoint.new(1, Color3.fromHex("#1e1e1e")),
-    }); grad.Rotation = 135
-
-    local ct = Instance.new("Frame", bg)
-    ct.Size = UDim2.fromOffset(500, 300); ct.Position = UDim2.fromScale(0.5, 0.5)
-    ct.AnchorPoint = Vector2.new(0.5, 0.5); ct.BackgroundTransparency = 1; ct.ZIndex = 2
-
-    local function mkLabel(txt, yOff, sz)
-        local l = Instance.new("TextLabel", ct)
-        l.Size = UDim2.fromOffset(500, 70); l.Position = UDim2.fromOffset(0, yOff)
-        l.BackgroundTransparency = 1; l.Text = txt; l.TextSize = sz
-        l.Font = Enum.Font.GothamBold; l.TextColor3 = Color3.fromHex("#ffffff")
-        l.TextTransparency = 1; l.ZIndex = 3; return l
-    end
-
-    local icon = Instance.new("ImageLabel", ct)
-    icon.Size = UDim2.fromOffset(120, 120); icon.Position = UDim2.fromOffset(190, -40)
-    icon.BackgroundTransparency = 1; icon.Image = "rbxassetid://91115084979317"
-    icon.ImageTransparency = 1; icon.ZIndex = 3
-
-    local title = mkLabel("King Akbar", 70, isMobile and 38 or 50)
-    local tg = Instance.new("UIGradient", title)
-    tg.Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0,   Color3.fromHex("#ffffff")),
-        ColorSequenceKeypoint.new(0.5, Color3.fromHex("#aaaaaa")),
-        ColorSequenceKeypoint.new(1,   Color3.fromHex("#555555")),
-    }); tg.Rotation = 45
-
-    local stat = mkLabel("Mempersiapkan mesin tempur...", 200, 12)
-    stat.Font = Enum.Font.Gotham; stat.TextColor3 = Color3.fromHex("#555555")
-    stat.TextXAlignment = Enum.TextXAlignment.Left; stat.Position = UDim2.fromOffset(50, 200)
-
-    local line = Instance.new("Frame", ct)
-    line.Size = UDim2.fromOffset(0, 2); line.Position = UDim2.fromOffset(250, 152)
-    line.AnchorPoint = Vector2.new(0.5, 0); line.BackgroundColor3 = Color3.fromHex("#444444")
-    line.BorderSizePixel = 0; line.ZIndex = 3
-
-    local barBg = Instance.new("Frame", ct)
-    barBg.Size = UDim2.fromOffset(400, 5); barBg.Position = UDim2.fromOffset(50, 190)
-    barBg.BackgroundColor3 = Color3.fromHex("#222222"); barBg.BackgroundTransparency = 1
-    barBg.BorderSizePixel = 0; barBg.ZIndex = 3
-    Instance.new("UICorner", barBg).CornerRadius = UDim.new(1, 0)
-
-    local bar = Instance.new("Frame", barBg)
-    bar.Size = UDim2.fromOffset(0, 5); bar.BackgroundColor3 = Color3.fromHex("#ffffff")
-    bar.BorderSizePixel = 0; bar.ZIndex = 4
-    Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
-
-    local function tw(obj, props, t)
-        TweenService:Create(obj, TweenInfo.new(t, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), props):Play()
-    end
-
-    task.spawn(function()
-        tw(icon,  { ImageTransparency = 0 }, 0.5); task.wait(0.15)
-        tw(title, { TextTransparency  = 0 }, 0.6); task.wait(0.35)
-        tw(line,  { Size = UDim2.fromOffset(400, 2) }, 0.7); task.wait(0.4)
-        tw(barBg, { BackgroundTransparency = 0 }, 0.3)
-        tw(stat,  { TextTransparency = 0 }, 0.3)
-
-        for _, s in ipairs({
-            { "Memuat UI Library...", 0.30 },
-            { "Mengecek Lisensi...", 0.60 },
-            { "Welcome, King Akbar!", 1.00 },
-        }) do
-            stat.Text = s[1]
-            tw(bar, { Size = UDim2.fromOffset(400 * s[2], 5) }, 0.5)
-            task.wait(0.55)
-        end
-
-        task.wait(0.3)
-        for _, p in ipairs({ bg, icon, title, line, barBg, bar, stat }) do
-            local prop = p == stat and "TextTransparency"
-                or (p == icon  and "ImageTransparency" or "BackgroundTransparency")
-            if p == title then prop = "TextTransparency" end
-            tw(p, { [prop] = 1 }, 0.4)
-        end
-        task.wait(0.8); sg:Destroy()
-    end)
-    task.wait(3)
-end
+-- ===== SETUP GLOBAL VYPERSLIB =====
+Vypers:SetFolder("KingVypers")
+Vypers:SetAccent(Color3.fromRGB(120, 90, 240))
 
 -- Capture original WalkSpeed and JumpPower on boot
 pcall(function()
@@ -264,114 +173,72 @@ pcall(function()
     end
 end)
 
--- ===== CUSTOM THEME ===== 
-WindUI:AddTheme({
-    Name        = "KingAkbar",
-    Accent      = Color3.fromHex("#fb923c"),
-    Background  = Color3.fromHex("#120a1a"),
-    Outline     = Color3.fromHex("#a3e635"),
-    Text        = Color3.fromHex("#FFFFFF"),
-    Placeholder = Color3.fromHex("#666666"),
-    Button      = Color3.fromHex("#fb923c"),
-    Icon        = Color3.fromHex("#a3e635"),
+-- ===== WINDOW CREATION =====
+local Window = Vypers:CreateWindow({
+    Title           = "King Vypers",
+    Icon            = "rbxassetid://139467646163013",
+    FloatIconRadius = 14,
+    SubTitle        = "v2.0",
+    Author          = "by Yeremia",
+    Background      = "rbxassetid://97514324988224",
+    BackgroundTransparency = 0,
+    Overlay         = 0.3,
+    Size            = UDim2.new(0, 580, 0, 430),
+    MinSize         = Vector2.new(480, 300),
+    MaxSize         = Vector2.new(720, 480),
+    SideBarWidth    = 150,
+    Resizable       = true,
+    Transparent     = true,
+
+    SurfaceTransparency = 0.3,
+    SectionTransparency = 0.3,
+    TabTransparency     = 0.3,
+
+    ItemColor    = Color3.fromRGB(40, 40, 60),
+    SectionColor = Color3.fromRGB(28, 28, 44),
+    TabColor     = Color3.fromRGB(34, 34, 52),
+    WindowColor  = Color3.fromRGB(20, 20, 30),
+    Accent       = Color3.fromRGB(120, 90, 240),
+    
+    ToggleKey   = Enum.KeyCode.RightShift,
+    Folder      = "KingVypers",
 })
 
--- ===== WINDOW CREATION ===== 
-local wSz  = isMobile and UDim2.fromOffset(420, 320) or UDim2.fromOffset(580, 460)
-local mnSz = isMobile and Vector2.new(600, 300) or Vector2.new(600, 350)
-local mxSz = isMobile and Vector2.new(650, 400) or Vector2.new(850, 560)
-
-local Window = WindUI:CreateWindow({
-    Title                       = "King Akbar - Violence District",
-    Icon                        = "crown",
-    Author                      = "King Akbar",
-    Folder                      = "KingAkbarHub",
-    Size                        = wSz,
-    MinSize                     = mnSz,
-    MaxSize                     = mxSz,
-    Transparent                 = false,
-    Background                  = "rbxassetid://127295801178451",
-    BackgroundImageTransparency = 0.5,
-    Theme                       = "KingAkbar",
-    Resizable                   = true,
-    SideBarWidth                = 210,
-    HideSearchBar               = false,
-    ScrollBarEnabled            = true,
-    ToggleKey                   = Enum.KeyCode.RightShift,
-    OpenButton                  = { Enabled = false },
-})
+Window:Tag({ Title = "BETA", Color = Color3.fromRGB(220, 180, 70) })
+Window:Tag({ Title = "Online", Icon = "bolt", Color = Color3.fromRGB(80, 190, 120) })
 
 NMHUB.Window = Window
 NMHUB.Ready = true
-_G.NMHUB = NMHUB
-
--- ===== OPEN BUTTON & FPS TAG =====
-Window:EditOpenButton({
-    Title           = "Open King Akbar",
-    Icon            = "crown",
-    CornerRadius    = UDim.new(0, 12),
-    StrokeThickness = 2,
-    Color = ColorSequence.new({
-        ColorSequenceKeypoint.new(0, Color3.fromHex("#ffffff")),
-        ColorSequenceKeypoint.new(1, Color3.fromHex("#0a0a0a")),
-    }),
-    Enabled   = true,
-    Draggable = true,
-})
-
-local FpsTag = Window:Tag({
-    Title = "Fps: ...",
-    Color = WindUI:Gradient({
-        [0]   = { Color = Color3.fromHex("#0a0a0a"), Transparency = 0 },
-        [100] = { Color = Color3.fromHex("#888888"), Transparency = 0 },
-    }, { Rotation = 45 }),
-})
-
-task.spawn(function()
-    while task.wait(1) do
-        pcall(function()
-            local fps  = math.floor(1 / RunService.RenderStepped:Wait())
-            local ping = math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())
-            if FpsTag and FpsTag.SetTitle then
-                FpsTag:SetTitle(("Fps: %d | Ping: %d"):format(fps, ping))
-            end
-        end)
-    end
-end)
-
-Window:SetIconSize(47)
-WindUI:SetTheme("KingAkbar")
+_G.NMHUB = NMHUB  -- Expose to global for testing
 
 -- ===== TABS =====
-local TabInformation = Window:Tab({ Title = "Information", Icon = "info" })
-local TabVisual      = Window:Tab({ Title = "Visual",      Icon = "eye" })
-local TabKiller      = Window:Tab({ Title = "Killer",      Icon = "star" })
-local TabSurvivor    = Window:Tab({ Title = "Survivor",    Icon = "shield" })
-local TabTeleport    = Window:Tab({ Title = "Teleport",    Icon = "map-pin" })
+local TabInformation = Window:CreateTab({ Title = "Information", Icon = "info" })
+local TabVisual      = Window:CreateTab({ Title = "Visual", Icon = "eye" })
+local TabKiller      = Window:CreateTab({ Title = "Killer", Icon = "combat" })
+local TabSurvivor    = Window:CreateTab({ Title = "Survivor", Icon = "shield" })
+local TabTeleport    = Window:CreateTab({ Title = "Teleport", Icon = "map" })
 NMHUB.Tabs = {}
-NMHUB.Tabs.Aimbot    = Window:Tab({ Title = "Aimbot",      Icon = "crosshair" })
-local TabMisc        = Window:Tab({ Title = "Misc",        Icon = "cog" })
-local TabConfig      = Window:Tab({ Title = "Config",      Icon = "code" })
-local TabSettings    = Window:Tab({ Title = "Settings",    Icon = "settings" })
-
-TabInformation:Select()
+NMHUB.Tabs.Aimbot    = Window:CreateTab({ Title = "Aimbot", Icon = "crosshair" })
+local TabMisc        = Window:CreateTab({ Title = "Misc", Icon = "cog" })
+local TabConfig      = Window:CreateTab({ Title = "Config", Icon = "gear" })
+local TabSettings    = Window:CreateTab({ Title = "Settings", Icon = "settings" })
 
 -- ===== INFORMATION TAB =====
-TabInformation:Paragraph({
-    Title = "Information",
-    Desc = "King Akbar Hub is a 100% free and keyless script.\nJoin our Discord to get the latest updates.",
-})
-TabInformation:Button({
-    Title = "Discord",
-    Callback = function()
-        local invite = "https://discord.gg/gJJbCyzcMY"
-        if setclipboard then
-            pcall(setclipboard, invite)
-            WindUI:Notify({ Title = "Discord", Content = "Link copied to clipboard!", Icon = "copy", Duration = 3 })
-        else
-            WindUI:Notify({ Title = "Discord", Content = invite, Duration = 10 })
-        end
-    end,
+local InfoSec = TabInformation:CreateSection({ Title = "Information", Opened = true })
+InfoSec:CreateParagraph({
+    Title = "King Vypers",
+    Text  = "King Vypers is a 100% free and keyless script.\nJoin our Discord to get the latest updates.",
+    Buttons = {
+        { Title = "Discord", Variant = "Primary", Icon = "copy", Callback = function()
+            local invite = "https://discord.gg/gJJbCyzcMY"
+            if setclipboard then
+                pcall(setclipboard, invite)
+                Window:Notify({ Title = "Discord", Content = "Link copied to clipboard!", Type = "success", Duration = 3 })
+            else
+                Window:Notify({ Title = "Discord", Content = invite, Type = "info", Duration = 10 })
+            end
+        end },
+    },
 })
 
 -- ===== GAME STATE & REMOTES =====
@@ -493,6 +360,7 @@ local _mapCache = { Generators={}, Gates={}, Hooks={}, Pallets={}, Windows={} }
 
 -- ===== VISUAL TAB =====
 do
+
 local _espHighlights  = {}
 local _espBillboards  = {}
 local _espConn        = nil
@@ -770,7 +638,7 @@ local function _upWindows()
     end
 end
 local function _upAllESP()
-    if _G.KINGAKBAR_Shutdown then return end
+    if _G.NOMERCY_Shutdown then return end
     local now = tick()
     if now - _espLastUpdate < _espUpdateRate then return end
     _espLastUpdate = now
@@ -882,181 +750,119 @@ _visualRestoreFog = _noFogOff
 _visualRestoreFb  = _fbOff
 _visualRestoreFOV = _fovOff
 
-local VisualPlayers = TabVisual:Section({ Title = "Players" })
-VisualPlayers:Toggle({
-    Title = "Killer ESP", Desc = "Highlight killer in red with name label",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_KillerESP = v
-        if v then _startESP() else
-            for _, pl in ipairs(Players:GetPlayers()) do
-                if pl.Team and pl.Team.Name=="Killer" and pl.Character then
-                    _remHL(pl.Character); _remLBL(pl.Character)
-                end
+-- ===== VISUAL TAB UI =====
+local VisualPlayers = TabVisual:CreateSection({ Title = "Players", Opened = true })
+VisualPlayers:CreateToggle({ Title = "Killer ESP", Desc = "Highlight killer in red with name label", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_KillerESP = v
+    if v then _startESP() else
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl.Team and pl.Team.Name=="Killer" and pl.Character then
+                _remHL(pl.Character); _remLBL(pl.Character)
             end
-            if not _anyESP() then _stopESP() end
         end
-        autoSaveConfig()
-    end,
-})
-VisualPlayers:Toggle({
-    Title = "Survivor ESP", Desc = "Highlight survivors in green with name label",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_SurvivorESP = v
-        if v then _startESP() else
-            for _, pl in ipairs(Players:GetPlayers()) do
-                if pl.Team and pl.Team.Name=="Survivors" and pl.Character then
-                    _remHL(pl.Character); _remLBL(pl.Character)
-                end
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
+VisualPlayers:CreateToggle({ Title = "Survivor ESP", Desc = "Highlight survivors in green with name label", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_SurvivorESP = v
+    if v then _startESP() else
+        for _, pl in ipairs(Players:GetPlayers()) do
+            if pl.Team and pl.Team.Name=="Survivors" and pl.Character then
+                _remHL(pl.Character); _remLBL(pl.Character)
             end
-            if not _anyESP() then _stopESP() end
         end
-        autoSaveConfig()
-    end,
-})
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
 
-local VisualObjects = TabVisual:Section({ Title = "World Objects" })
-VisualObjects:Toggle({
-    Title = "Generator ESP", Desc = "Highlight generators in orange",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_GeneratorESP = v
-        if v then _startESP() else
-            for _, g in ipairs(_mapCache.Generators) do _remHL(g.model); _remLBL(g.model) end
-            if not _anyESP() then _stopESP() end
-        end
-        autoSaveConfig()
-    end,
-})
-VisualObjects:Toggle({
-    Title = "Gate ESP", Desc = "Highlight exit gates in white",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_GateESP = v
-        if v then _startESP() else
-            for _, obj in ipairs(_mapCache.Gates) do _remHL(obj); _remLBL(obj) end
-            if not _anyESP() then _stopESP() end
-        end
-        autoSaveConfig()
-    end,
-})
-VisualObjects:Toggle({
-    Title = "Hook ESP", Desc = "Highlight hooks in red (closest = yellow)",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_HookESP = v
-        if v then _startESP()
-        else pcall(_upHooks); if not _anyESP() then _stopESP() end end
-        autoSaveConfig()
-    end,
-})
-VisualObjects:Toggle({
-    Title = "Closest Hook Only", Desc = "Show only nearest hook highlighted in yellow",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_ClosestHookOnly = v
-        if NMHUB.Flags.Visual_HookESP then pcall(_upHooks) end
-        autoSaveConfig()
-    end,
-})
-VisualObjects:Toggle({
-    Title = "Pallet ESP", Desc = "Highlight pallets in yellow",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_PalletESP = v
-        if v then _startESP() else
-            for _, obj in ipairs(_mapCache.Pallets) do _remHL(obj); _remLBL(obj) end
-            if not _anyESP() then _stopESP() end
-        end
-        autoSaveConfig()
-    end,
-})
-VisualObjects:Toggle({
-    Title = "Window ESP", Desc = "Highlight vaultable windows in light blue",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_WindowESP = v
-        if v then _startESP() else
-            for _, obj in ipairs(_mapCache.Windows) do _remHL(obj); _remLBL(obj) end
-            if not _anyESP() then _stopESP() end
-        end
-        autoSaveConfig()
-    end,
-})
+local VisualObjects = TabVisual:CreateSection({ Title = "World Objects" })
+VisualObjects:CreateToggle({ Title = "Generator ESP", Desc = "Highlight generators in orange", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_GeneratorESP = v
+    if v then _startESP() else
+        for _, g in ipairs(_mapCache.Generators) do _remHL(g.model); _remLBL(g.model) end
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
+VisualObjects:CreateToggle({ Title = "Gate ESP", Desc = "Highlight exit gates in white", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_GateESP = v
+    if v then _startESP() else
+        for _, obj in ipairs(_mapCache.Gates) do _remHL(obj); _remLBL(obj) end
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
+VisualObjects:CreateToggle({ Title = "Hook ESP", Desc = "Highlight hooks in red (closest = yellow)", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_HookESP = v
+    if v then _startESP()
+    else pcall(_upHooks); if not _anyESP() then _stopESP() end end
+    autoSaveConfig()
+end })
+VisualObjects:CreateToggle({ Title = "Closest Hook Only", Desc = "Show only nearest hook highlighted in yellow", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_ClosestHookOnly = v
+    if NMHUB.Flags.Visual_HookESP then pcall(_upHooks) end
+    autoSaveConfig()
+end })
+VisualObjects:CreateToggle({ Title = "Pallet ESP", Desc = "Highlight pallets in yellow", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_PalletESP = v
+    if v then _startESP() else
+        for _, obj in ipairs(_mapCache.Pallets) do _remHL(obj); _remLBL(obj) end
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
+VisualObjects:CreateToggle({ Title = "Window ESP", Desc = "Highlight vaultable windows in light blue", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_WindowESP = v
+    if v then _startESP() else
+        for _, obj in ipairs(_mapCache.Windows) do _remHL(obj); _remLBL(obj) end
+        if not _anyESP() then _stopESP() end
+    end
+    autoSaveConfig()
+end })
 
-local VisualCamera = TabVisual:Section({ Title = "Camera" })
-VisualCamera:Toggle({
-    Title = "Remove Fog", Desc = "Disable fog and atmosphere (saves original)",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_NoFog = v
-        if v then pcall(_noFogOn) else pcall(_noFogOff) end
-        autoSaveConfig()
-    end,
-})
-VisualCamera:Toggle({
-    Title = "Fullbright", Desc = "Maximum brightness, no shadows, no fog",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_Fullbright = v
-        if v then pcall(_fbOn) else pcall(_fbOff) end
-        autoSaveConfig()
-    end,
-})
-VisualCamera:Toggle({
-    Title = "Custom FOV", Desc = "Override camera field of view",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Visual_CustomFOV = v
-        if v then pcall(_fovOn) else pcall(_fovOff) end
-        autoSaveConfig()
-    end,
-})
-VisualCamera:Slider({
-    Title = "Field of View", Desc = "Camera FOV value (default 70)",
-    Step = 1, Value = { Min = 30, Max = 120, Default = 70 },
-    Callback = function(v)
-        NMHUB.Flags.Visual_FOVValue = v
-        if NMHUB.Flags.Visual_CustomFOV then pcall(_fovOn) end
-        autoSaveConfig()
-    end,
-})
+local VisualCamera = TabVisual:CreateSection({ Title = "Camera" })
+VisualCamera:CreateToggle({ Title = "Remove Fog", Desc = "Disable fog and atmosphere (saves original)", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_NoFog = v
+    if v then pcall(_noFogOn) else pcall(_noFogOff) end
+    autoSaveConfig()
+end })
+VisualCamera:CreateToggle({ Title = "Fullbright", Desc = "Maximum brightness, no shadows, no fog", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_Fullbright = v
+    if v then pcall(_fbOn) else pcall(_fbOff) end
+    autoSaveConfig()
+end })
+VisualCamera:CreateToggle({ Title = "Custom FOV", Desc = "Override camera field of view", Default = false, Callback = function(v)
+    NMHUB.Flags.Visual_CustomFOV = v
+    if v then pcall(_fovOn) else pcall(_fovOff) end
+    autoSaveConfig()
+end })
+VisualCamera:CreateSlider({ Title = "Field of View", Desc = "Camera FOV value (default 70)", Min = 30, Max = 120, Increment = 1, Suffix = "°", Default = 70, Callback = function(v)
+    NMHUB.Flags.Visual_FOVValue = v
+    if NMHUB.Flags.Visual_CustomFOV then pcall(_fovOn) end
+    autoSaveConfig()
+end })
 
-local VisualSettings = TabVisual:Section({ Title = "ESP Settings" })
-VisualSettings:Toggle({
-    Title = "Show Distance", Desc = "Display meters on ESP labels",
-    Value = true,
-    Callback = function(v)
-        NMHUB.Flags.Visual_ShowDist = v; _espShowDist = v
-        autoSaveConfig()
-    end,
-})
-VisualSettings:Slider({
-    Title = "Max Distance", Desc = "Hide ESP beyond this range (studs)",
-    Step = 10, Value = { Min = 100, Max = 1000, Default = 500 },
-    Callback = function(v)
-        NMHUB.Flags.Visual_MaxDist = v; _espMaxDist = v
-        autoSaveConfig()
-    end,
-})
-VisualSettings:Slider({
-    Title = "Update Rate", Desc = "Seconds between ESP refresh",
-    Step = 0.1, Value = { Min = 0.1, Max = 2.0, Default = 0.5 },
-    Callback = function(v)
-        NMHUB.Flags.Visual_UpdateRate = v; _espUpdateRate = v
-        autoSaveConfig()
-    end,
-})
-VisualSettings:Slider({
-    Title = "Max ESP Objects", Desc = "Cap total highlighted objects",
-    Step = 5, Value = { Min = 25, Max = 500, Default = 100 },
-    Callback = function(v)
-        NMHUB.Flags.Visual_MaxObjects = v; _espMaxObjects = v
-        autoSaveConfig()
-    end,
-})
-end
+local VisualSettings = TabVisual:CreateSection({ Title = "ESP Settings" })
+VisualSettings:CreateToggle({ Title = "Show Distance", Desc = "Display meters on ESP labels", Default = true, Callback = function(v)
+    NMHUB.Flags.Visual_ShowDist = v; _espShowDist = v
+    autoSaveConfig()
+end })
+VisualSettings:CreateSlider({ Title = "Max Distance", Desc = "Hide ESP beyond this range (studs)", Min = 100, Max = 1000, Increment = 10, Suffix = " studs", Default = 500, Callback = function(v)
+    NMHUB.Flags.Visual_MaxDist = v; _espMaxDist = v
+    autoSaveConfig()
+end })
+VisualSettings:CreateSlider({ Title = "Update Rate", Desc = "Seconds between ESP refresh", Min = 0.1, Max = 2.0, Increment = 0.1, Suffix = "s", Default = 0.5, Callback = function(v)
+    NMHUB.Flags.Visual_UpdateRate = v; _espUpdateRate = v
+    autoSaveConfig()
+end })
+VisualSettings:CreateSlider({ Title = "Max ESP Objects", Desc = "Cap total highlighted objects", Min = 25, Max = 500, Increment = 5, Default = 100, Callback = function(v)
+    NMHUB.Flags.Visual_MaxObjects = v; _espMaxObjects = v
+    autoSaveConfig()
+end })
+
+end -- do (Visual Tab)
 
 -- ===== KILLER TAB =====
 local startKillerDispatcher = function() end
@@ -1075,164 +881,107 @@ local removeHitboxExpand
 local stopNoPalletStunWatchdog
 local _hookState = "idle"
 
+-- ===== KILLER TAB UI =====
 do
-local KillerCombat = TabKiller:Section({ Title = "Combat" })
+local KillerCombat = TabKiller:CreateSection({ Title = "Combat", Opened = true })
 
-KillerCombat:Toggle({
-    Title = "Auto Attack",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_AutoAttack = v
+KillerCombat:CreateToggle({ Title = "Auto Attack", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_AutoAttack = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
+
+KillerCombat:CreateSlider({ Title = "Attack Range", Min = 5, Max = 30, Increment = 1, Suffix = " studs", Default = 15, Callback = function(v)
+    NMHUB.Flags.Killer_AutoAttackRange = v
+    autoSaveConfig()
+end })
+
+KillerCombat:CreateToggle({ Title = "Burst Attack", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_BurstAttack = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
+
+KillerCombat:CreateToggle({ Title = "Hitbox Expand", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_HitboxExpand = v
+    if v then
+        applyHitboxExpand()
         startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+    else
+        removeHitboxExpand()
+    end
+    autoSaveConfig()
+end })
 
-KillerCombat:Slider({
-    Title = "Attack Range",
-    Step  = 1,
-    Value = { Min = 5, Max = 30, Default = 15 },
-    Callback = function(v)
-        NMHUB.Flags.Killer_AutoAttackRange = v
-        autoSaveConfig()
-    end,
-})
+KillerCombat:CreateSlider({ Title = "Hitbox Size", Min = 5, Max = 50, Increment = 1, Suffix = " studs", Default = 15, Callback = function(v)
+    NMHUB.Flags.Killer_HitboxSize = v
+    if NMHUB.Flags.Killer_HitboxExpand then
+        applyHitboxExpand()
+    end
+    autoSaveConfig()
+end })
 
-KillerCombat:Toggle({
-    Title = "Burst Attack",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_BurstAttack = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerCombat:CreateToggle({ Title = "Infinite Lunge", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_InfiniteLunge = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-KillerCombat:Toggle({
-    Title = "Hitbox Expand",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_HitboxExpand = v
-        if v then
-            applyHitboxExpand()
-            startKillerDispatcher()
-        else
-            removeHitboxExpand()
-        end
-        autoSaveConfig()
-    end,
-})
+local KillerInstantKill = TabKiller:CreateSection({ Title = "Instant Kill" })
 
-KillerCombat:Slider({
-    Title = "Hitbox Size",
-    Step  = 1,
-    Value = { Min = 5, Max = 50, Default = 15 },
-    Callback = function(v)
-        NMHUB.Flags.Killer_HitboxSize = v
-        if NMHUB.Flags.Killer_HitboxExpand then
-            applyHitboxExpand()
-        end
-        autoSaveConfig()
-    end,
-})
+KillerInstantKill:CreateToggle({ Title = "Instant Kill", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_InstantKill = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-KillerCombat:Toggle({
-    Title = "Infinite Lunge",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_InfiniteLunge = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerInstantKill:CreateSlider({ Title = "Instant Kill Range", Min = 10, Max = 200, Increment = 5, Suffix = " studs", Default = 40, Callback = function(v)
+    NMHUB.Flags.Killer_InstantKillRange = v
+    autoSaveConfig()
+end })
 
-local KillerInstantKill = TabKiller:Section({ Title = "Instant Kill" })
+local KillerMapControl = TabKiller:CreateSection({ Title = "Map Control" })
 
-KillerInstantKill:Toggle({
-    Title = "Instant Kill",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_InstantKill = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerMapControl:CreateToggle({ Title = "Destroy Pallets", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_DestroyPallets = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-KillerInstantKill:Slider({
-    Title = "Instant Kill Range",
-    Step  = 5,
-    Value = { Min = 10, Max = 200, Default = 40 },
-    Callback = function(v)
-        NMHUB.Flags.Killer_InstantKillRange = v
-        autoSaveConfig()
-    end,
-})
+KillerMapControl:CreateToggle({ Title = "Full Gen Break", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_FullGenBreak = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-local KillerMapControl = TabKiller:Section({ Title = "Map Control" })
+local KillerUtility = TabKiller:CreateSection({ Title = "Utility" })
 
-KillerMapControl:Toggle({
-    Title = "Destroy Pallets",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_DestroyPallets = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerUtility:CreateToggle({ Title = "Auto Hook", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_AutoHook = v
+    if not v then _hookState = "idle" end
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-KillerMapControl:Toggle({
-    Title = "Full Gen Break",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_FullGenBreak = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerUtility:CreateToggle({ Title = "Anti Blind", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_AntiBlind = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-local KillerUtility = TabKiller:Section({ Title = "Utility" })
+KillerUtility:CreateToggle({ Title = "No Pallet Stun", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_NoPalletStun = v
+    if v then startKillerDispatcher() else stopNoPalletStunWatchdog() end
+    autoSaveConfig()
+end })
 
-KillerUtility:Toggle({
-    Title = "Auto Hook",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_AutoHook = v
-        if not v then _hookState = "idle" end
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
+KillerUtility:CreateToggle({ Title = "No Slowdown", Default = false, Callback = function(v)
+    NMHUB.Flags.Killer_NoSlowdown = v
+    startKillerDispatcher()
+    autoSaveConfig()
+end })
 
-KillerUtility:Toggle({
-    Title = "Anti Blind",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_AntiBlind = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
-
-KillerUtility:Toggle({
-    Title = "No Pallet Stun",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_NoPalletStun = v
-        if v then startKillerDispatcher() else stopNoPalletStunWatchdog() end
-        autoSaveConfig()
-    end,
-})
-
-KillerUtility:Toggle({
-    Title = "No Slowdown",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Killer_NoSlowdown = v
-        startKillerDispatcher()
-        autoSaveConfig()
-    end,
-})
-end
+end -- ===== END KILLER TAB UI =====
 
 -- ===== SURVIVOR TAB =====
 local startAutoSkillCheck, stopAutoSkillCheck
@@ -1248,170 +997,108 @@ local startAutoEscape,     stopAutoEscape
 local startFastVault,      stopFastVault
 local startSurvDispatcher, stopSurvDispatcher
 
-local SurvivorObjectives = TabSurvivor:Section({ Title = "Objectives" })
+local SurvivorObjectives = TabSurvivor:CreateSection({ Title = "Objectives", Opened = true })
 
-SurvivorObjectives:Toggle({
-    Title = "Auto SkillCheck",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_AutoSkillCheck = v
-        if v then startAutoSkillCheck() else stopAutoSkillCheck() end
-        autoSaveConfig()
-    end,
-})
+SurvivorObjectives:CreateToggle({ Title = "Auto SkillCheck", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_AutoSkillCheck = v
+    if v then startAutoSkillCheck() else stopAutoSkillCheck() end
+    autoSaveConfig()
+end })
 
-SurvivorObjectives:Toggle({
-    Title = "Fast Repair",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_FastRepair = v
-        if v then startFastRepair() else stopFastRepair() end
-        autoSaveConfig()
-    end,
-})
+SurvivorObjectives:CreateToggle({ Title = "Fast Repair", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_FastRepair = v
+    if v then startFastRepair() else stopFastRepair() end
+    autoSaveConfig()
+end })
 
-SurvivorObjectives:Toggle({
-    Title = "Instant Generator",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_InstantGen = v
-        if v then startInstantGen() else stopInstantGen() end
-        if v then
-            WindUI:Notify({ Title = "⚠ Instant Generator", Content = "HIGH DETECTION RISK — use sparingly!", Icon = "alert-triangle", Duration = 5 })
-        end
-        autoSaveConfig()
-    end,
-})
+SurvivorObjectives:CreateToggle({ Title = "Instant Generator", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_InstantGen = v
+    if v then startInstantGen() else stopInstantGen() end
+    if v then
+        Window:Notify({ Title = "⚠ Instant Generator", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
+    end
+    autoSaveConfig()
+end })
 
-local SurvivorDefense = TabSurvivor:Section({ Title = "Defense" })
+local SurvivorDefense = TabSurvivor:CreateSection({ Title = "Defense" })
 
-SurvivorDefense:Toggle({
-    Title = "Auto Parry",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_AutoParry = v
-        if v then startAutoParry() else stopAutoParry() end
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateToggle({ Title = "Auto Parry", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_AutoParry = v
+    if v then startAutoParry() else stopAutoParry() end
+    autoSaveConfig()
+end })
 
-SurvivorDefense:Slider({
-    Title = "Parry Range",
-    Step  = 1,
-    Value = { Min = 5, Max = 30, Default = 12 },
-    Callback = function(v)
-        NMHUB.Flags.Surv_ParryRange = v
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateSlider({ Title = "Parry Range", Min = 5, Max = 30, Increment = 1, Suffix = " studs", Default = 12, Callback = function(v)
+    NMHUB.Flags.Surv_ParryRange = v
+    autoSaveConfig()
+end })
 
-SurvivorDefense:Toggle({
-    Title = "Auto Wiggle",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_AutoWiggle = v
-        if v then startAutoWiggle() else stopAutoWiggle() end
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateToggle({ Title = "Auto Wiggle", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_AutoWiggle = v
+    if v then startAutoWiggle() else stopAutoWiggle() end
+    autoSaveConfig()
+end })
 
-SurvivorDefense:Toggle({
-    Title = "Instant Heal",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_InstantHeal = v
-        if v then startInstantHeal() else stopInstantHeal() end
-        if v then
-            WindUI:Notify({ Title = "⚠ Instant Heal", Content = "HIGH DETECTION RISK — use sparingly!", Icon = "alert-triangle", Duration = 5 })
-        end
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateToggle({ Title = "Instant Heal", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_InstantHeal = v
+    if v then startInstantHeal() else stopInstantHeal() end
+    if v then
+        Window:Notify({ Title = "⚠ Instant Heal", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
+    end
+    autoSaveConfig()
+end })
 
-SurvivorDefense:Toggle({
-    Title = "No Fall Damage",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_NoFallDmg = v
-        if v then startNoFallDmg() else stopNoFallDmg() end
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateToggle({ Title = "No Fall Damage", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_NoFallDmg = v
+    if v then startNoFallDmg() else stopNoFallDmg() end
+    autoSaveConfig()
+end })
 
-SurvivorDefense:Toggle({
-    Title = "No Slowdown",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_NoSlowdown = v
-        startSurvDispatcher()
-        autoSaveConfig()
-    end,
-})
+SurvivorDefense:CreateToggle({ Title = "No Slowdown", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_NoSlowdown = v
+    startSurvDispatcher()
+    autoSaveConfig()
+end })
 
-local SurvivorSafety = TabSurvivor:Section({ Title = "Safety & Movement" })
+local SurvivorSafety = TabSurvivor:CreateSection({ Title = "Safety & Movement" })
 
-SurvivorSafety:Toggle({
-    Title = "Fast Vault",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_FastVault = v
-        if v then startFastVault() else stopFastVault() end
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateToggle({ Title = "Fast Vault", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_FastVault = v
+    if v then startFastVault() else stopFastVault() end
+    autoSaveConfig()
+end })
 
-SurvivorSafety:Toggle({
-    Title = "Flee Killer",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_FleeKiller = v
-        if v then startFleeKiller() else stopFleeKiller() end
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateToggle({ Title = "Flee Killer", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_FleeKiller = v
+    if v then startFleeKiller() else stopFleeKiller() end
+    autoSaveConfig()
+end })
 
-SurvivorSafety:Slider({
-    Title = "Flee Distance",
-    Step  = 5,
-    Value = { Min = 10, Max = 60, Default = 30 },
-    Callback = function(v)
-        NMHUB.Flags.Surv_FleeDist = v
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateSlider({ Title = "Flee Distance", Min = 10, Max = 60, Increment = 5, Suffix = " studs", Default = 30, Callback = function(v)
+    NMHUB.Flags.Surv_FleeDist = v
+    autoSaveConfig()
+end })
 
-SurvivorSafety:Toggle({
-    Title = "Killer Alert",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_KillerAlert = v
-        if v then startKillerAlert() else stopKillerAlert() end
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateToggle({ Title = "Killer Alert", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_KillerAlert = v
+    if v then startKillerAlert() else stopKillerAlert() end
+    autoSaveConfig()
+end })
 
-SurvivorSafety:Slider({
-    Title = "Alert Range",
-    Step  = 5,
-    Value = { Min = 10, Max = 80, Default = 35 },
-    Callback = function(v)
-        NMHUB.Flags.Surv_AlertRange = v
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateSlider({ Title = "Alert Range", Min = 10, Max = 80, Increment = 5, Suffix = " studs", Default = 35, Callback = function(v)
+    NMHUB.Flags.Surv_AlertRange = v
+    autoSaveConfig()
+end })
 
-SurvivorSafety:Toggle({
-    Title = "Auto Escape",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Surv_AutoEscape = v
-        if v then startAutoEscape() else stopAutoEscape() end
-        if v then
-            WindUI:Notify({ Title = "⚠ Auto Escape", Content = "EXTREME DETECTION RISK — expect bans!", Icon = "alert-triangle", Duration = 6 })
-        end
-        autoSaveConfig()
-    end,
-})
+SurvivorSafety:CreateToggle({ Title = "Auto Escape", Default = false, Callback = function(v)
+    NMHUB.Flags.Surv_AutoEscape = v
+    if v then startAutoEscape() else stopAutoEscape() end
+    if v then
+        Window:Notify({ Title = "⚠ Auto Escape", Content = "EXTREME DETECTION RISK — expect bans!", Type = "error", Duration = 6 })
+    end
+    autoSaveConfig()
+end })
+
 
 -- ===== KILLER STEP FUNCTIONS =====
 local _lastAutoAttack   = 0
@@ -1495,12 +1182,12 @@ stepInstantKill = function()
     fireAttack()
     
     task.defer(function()
-        if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Killer_InstantKill then return end
+        if _G.NOMERCY_Shutdown or not NMHUB.Flags.Killer_InstantKill then return end
         if target and target.Parent then fireAttack() end
     end)
     
     task.delay(0.06, function()
-        if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Killer_InstantKill then return end
+        if _G.NOMERCY_Shutdown or not NMHUB.Flags.Killer_InstantKill then return end
         if target and target.Parent then fireAttack() end
     end)
     
@@ -1932,7 +1619,7 @@ NMHUB.Connections.KillerBurstInput = UserInputService.InputBegan:Connect(functio
     if ba then
         pcall(function() ba:FireServer() end)
         task.delay(0.1, function()
-            if not _G.KINGAKBAR_Shutdown then
+            if not _G.NOMERCY_Shutdown then
                 pcall(function() ba:FireServer() end)
             end
         end)
@@ -1951,7 +1638,7 @@ startKillerDispatcher = function()
     if _killerDispConn then return end
     _killerDispFrame = 0
     _killerDispConn = RunService.Heartbeat:Connect(function()
-        if _G.KINGAKBAR_Shutdown then
+        if _G.NOMERCY_Shutdown then
             stopKillerDispatcher()
             return
         end
@@ -2084,7 +1771,7 @@ end
 
 task.spawn(function()
     task.wait(3)
-    if _G.KINGAKBAR_Shutdown then return end
+    if _G.NOMERCY_Shutdown then return end
     pcall(_setupPersistentHooks)
     pcall(_setupNoSlowdownHook)
 end)
@@ -2178,7 +1865,7 @@ local function _setupSkillCheckHook()
             if isInst then
                 task.spawn(function()
                     for i = 1, 200 do
-                        if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Surv_InstantGen then break end
+                        if _G.NOMERCY_Shutdown or not NMHUB.Flags.Surv_InstantGen then break end
                         if _scActiveGen ~= gen then break end
                         pcall(function() scResult:FireServer("success", 1, gen, point) end)
                         if i % 10 == 0 then task.wait(0) end
@@ -2187,7 +1874,7 @@ local function _setupSkillCheckHook()
                 end)
             else
                 task.delay(0.15, function()
-                    if _G.KINGAKBAR_Shutdown then return end
+                    if _G.NOMERCY_Shutdown then return end
                     if not (NMHUB.Flags.Surv_AutoSkillCheck or NMHUB.Flags.Surv_FastRepair) then return end
                     if _scActiveGen ~= gen then return end
                     pcall(function() scResult:FireServer("success", 1, gen, point) end)
@@ -2519,13 +2206,13 @@ local function _setupHealSkillCheckHook()
         if not healScEvent then return end
         if _healScHookConn then return end
         _healScHookConn = healScEvent.OnClientEvent:Connect(function(healTarget, healPoint)
-            if _G.KINGAKBAR_Shutdown then return end
+            if _G.NOMERCY_Shutdown then return end
             if not NMHUB.Flags.Surv_InstantHeal then return end
             if not isSurvivor() then return end
             local healScResult = RemHeal:FindFirstChild("SkillCheckResultEvent")
             if not healScResult then return end
             task.delay(0.1, function()
-                if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Surv_InstantHeal then return end
+                if _G.NOMERCY_Shutdown or not NMHUB.Flags.Surv_InstantHeal then return end
                 pcall(function() healScResult:FireServer("success", 1, healTarget, healPoint) end)
             end)
         end)
@@ -2679,7 +2366,7 @@ startFleeKiller = function()
         if not pos then return end
         performSafeTeleport(CFrame.new(pos + Vector3.new(0, 3, 4)))
         _lastFlee = tick()
-        WindUI:Notify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Icon = "zap", Duration = 2 })
+        Window:Notify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Type = "info", Duration = 2 })
     end)
     NMHUB.Connections.FleeKiller = _fleeConn
 end
@@ -2710,10 +2397,10 @@ startKillerAlert = function()
         local inRange = dist <= alertRange
         if inRange and not _wasInRange then
             if (tick() - _lastAlert) > 3.0 then
-                WindUI:Notify({
+                Window:Notify({
                     Title = "⚠ Killer Nearby!",
                     Content = string.format("Killer is %.0f studs away!", dist),
-                    Icon   = "alert-triangle",
+                    Type   = "warning",
                     Duration = 3,
                 })
                 _lastAlert = tick()
@@ -2764,7 +2451,7 @@ end
 
 local function _escapeStillActive(token)
     return token == _escapeRunToken
-        and not _G.KINGAKBAR_Shutdown
+        and not _G.NOMERCY_Shutdown
         and NMHUB.Flags.Surv_AutoEscape == true
         and isSurvivor()
 end
@@ -2880,7 +2567,7 @@ startAutoEscape = function()
             local ok, err = pcall(_runAutoEscape, token)
             if not ok and tick() - _lastEscapeWarn > 2 then
                 _lastEscapeWarn = tick()
-                warn("[King Akbar][AutoEscape] " .. tostring(err))
+                warn("[King Vypers][AutoEscape] " .. tostring(err))
             end
             if token == _escapeRunToken then _escapeBusy = false end
         end)
@@ -2915,7 +2602,7 @@ end
 startSurvDispatcher = function()
     if _survDispConn then return end
     _survDispConn = RunService.Heartbeat:Connect(function()
-        if _G.KINGAKBAR_Shutdown then stopSurvDispatcher(); return end
+        if _G.NOMERCY_Shutdown then stopSurvDispatcher(); return end
         if not anySurvFeatureNeedingDispatch() then stopSurvDispatcher(); return end
         pcall(stepSurvNoSlowdown)
     end)
@@ -2927,7 +2614,6 @@ if NMHUB.Flags.Surv_NoSlowdown then startSurvDispatcher() end
 do
 
 local TabAimbot = NMHUB.Tabs.Aimbot
-
 local _aimbotHolding   = false
 
 local function _getAimbotTarget()
@@ -3019,7 +2705,7 @@ local function _startAimbot()
     end
 
     NMHUB.Connections.AimbotConn = RunService.Heartbeat:Connect(function()
-        if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Aimbot_Enabled then return end
+        if _G.NOMERCY_Shutdown or not NMHUB.Flags.Aimbot_Enabled then return end
 
         pcall(function()
             local fc = NMHUB.GuiElements.AimbotFovCircle
@@ -3087,73 +2773,49 @@ local function _stopAimbot()
     _aimbotHolding = false
 end
 
-local AimbotGeneral = TabAimbot:Section({ Title = "Aimbot" })
+-- ===== AIMBOT UI =====
+local AimbotGeneral = TabAimbot:CreateSection({ Title = "Aimbot", Opened = true })
 
-AimbotGeneral:Toggle({
-    Title = "Enable Aimbot",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_Enabled = v
-        if v then _startAimbot() else _stopAimbot() end
-        autoSaveConfig()
-    end,
-})
+AimbotGeneral:CreateToggle({ Title = "Enable Aimbot", Default = false, Callback = function(v)
+    NMHUB.Flags.Aimbot_Enabled = v
+    if v then _startAimbot() else _stopAimbot() end
+    autoSaveConfig()
+end })
 
-AimbotGeneral:Toggle({
-    Title = "Hold RMB to Aim",
-    Value = true,
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_HoldRMB = v
-        autoSaveConfig()
-    end,
-})
+AimbotGeneral:CreateToggle({ Title = "Hold RMB to Aim", Default = true, Callback = function(v)
+    NMHUB.Flags.Aimbot_HoldRMB = v
+    autoSaveConfig()
+end })
 
-AimbotGeneral:Toggle({
-    Title = "Visibility Check",
-    Value = false,
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_VisCheck = v
-        autoSaveConfig()
-    end,
-})
+AimbotGeneral:CreateToggle({ Title = "Visibility Check", Default = false, Callback = function(v)
+    NMHUB.Flags.Aimbot_VisCheck = v
+    autoSaveConfig()
+end })
 
-AimbotGeneral:Toggle({
-    Title = "Show FOV Circle",
-    Value = true,
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_ShowFOV = v
-        if NMHUB.GuiElements.AimbotFovCircle then
-            pcall(function() NMHUB.GuiElements.AimbotFovCircle.Visible = v end)
-        end
-        autoSaveConfig()
-    end,
-})
+AimbotGeneral:CreateToggle({ Title = "Show FOV Circle", Default = true, Callback = function(v)
+    NMHUB.Flags.Aimbot_ShowFOV = v
+    if _aimbotFovCircle then
+        pcall(function() _aimbotFovCircle.Visible = v end)
+    end
+    autoSaveConfig()
+end })
 
-local AimbotSettings = TabAimbot:Section({ Title = "Settings" })
+local AimbotSettings = TabAimbot:CreateSection({ Title = "Settings" })
 
-AimbotSettings:Slider({
-    Title = "FOV Radius",
-    Step  = 5,
-    Value = { Min = 20, Max = 500, Default = 120 },
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_FOV = v
-        if NMHUB.GuiElements.AimbotFovCircle then
-            pcall(function() NMHUB.GuiElements.AimbotFovCircle.Radius = v end)
-        end
-        autoSaveConfig()
-    end,
-})
+AimbotSettings:CreateSlider({ Title = "FOV Radius", Min = 20, Max = 500, Increment = 5, Suffix = " px", Default = 120, Callback = function(v)
+    NMHUB.Flags.Aimbot_FOV = v
+    if _aimbotFovCircle then
+        pcall(function() _aimbotFovCircle.Radius = v end)
+    end
+    autoSaveConfig()
+end })
 
-AimbotSettings:Slider({
-    Title = "Smooth",
-    Step  = 1,
-    Value = { Min = 1, Max = 100, Default = 15 },
-    Callback = function(v)
-        NMHUB.Flags.Aimbot_Smooth = v / 100
-        autoSaveConfig()
-    end,
-})
-end
+AimbotSettings:CreateSlider({ Title = "Smooth", Min = 1, Max = 100, Increment = 1, Suffix = "%", Default = 15, Callback = function(v)
+    NMHUB.Flags.Aimbot_Smooth = v / 100
+    autoSaveConfig()
+end })
+
+end -- ===== END AIMBOT TAB =====
 
 -- ===== TELEPORT TAB =====
 local function getTeleportPos(obj)
@@ -3183,14 +2845,6 @@ local _tpPalObjs,  _tpPalList   = {}, {}
 local _tpWinObjs,  _tpWinList   = {}, {}
 local _tpGateObjs, _tpGateList  = {}, {}
 local _tpPlrObjs,  _tpPlrList   = {}, {}
-
-local function refreshDropdown(key, list)
-    pcall(function()
-        if Options and Options[key] then
-            Options[key].Value.Dropdown:Values(list)
-        end
-    end)
-end
 
 local function rebuildTagList(tag, prefix, listOut, objsOut)
     for k in pairs(objsOut) do objsOut[k] = nil end
@@ -3259,607 +2913,519 @@ local function _refreshAllTpLists()
     if _selPal  and not _selPal:IsDescendantOf(workspace)  then _selPal  = nil end
     if _selWin  and not _selWin:IsDescendantOf(workspace)  then _selWin  = nil end
     if _selGate and not _selGate:IsDescendantOf(workspace) then _selGate = nil end
-    refreshDropdown("TpGenerator", _tpGenList)
-    refreshDropdown("TpHook",      _tpHookList)
-    refreshDropdown("TpPallet",    _tpPalList)
-    refreshDropdown("TpWindow",    _tpWinList)
-    refreshDropdown("TpGate",      _tpGateList)
-    refreshDropdown("TpPlayer",    _tpPlrList)
 end
 
 NMHUB.Loops.TpAutoRefresh = task.spawn(function()
-    while not _G.KINGAKBAR_Shutdown do
+    while not _G.NOMERCY_Shutdown do
         task.wait(5)
-        if _G.KINGAKBAR_Shutdown then break end
+        if _G.NOMERCY_Shutdown then break end
         pcall(_refreshAllTpLists)
     end
 end)
 
-local TeleportMapObjects = TabTeleport:Section({ Title = "Map Objects" })
+local TeleportMapObjects = TabTeleport:CreateSection({ Title = "Map Objects", Opened = true })
 
-TeleportMapObjects:Dropdown({
-    Title    = "Generator",
-    Key      = "TpGenerator",
-    Values   = _tpGenList,
-    Value    = _tpGenList[1],
-    Callback = function(v)
-        _selGen = _tpGenObjs[v]
-    end,
-})
-TeleportMapObjects:Button({
-    Title    = "Teleport to Generator",
-    Callback = function()
-        if _selGen and doTeleport(_selGen) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Duration = 3 })
-    end,
-})
+local TpGenDropdown = TeleportMapObjects:CreateDropdown({ Title = "Generator", Sidebar = true, Values = _tpGenList, Default = "", Refresh = function() rebuildTagList("GeneratorPoint", "Generator", _tpGenList, _tpGenObjs); return _tpGenList end, RefreshInterval = 5, Callback = function(v) _selGen = _tpGenObjs[v] end })
+TeleportMapObjects:CreateButton({ Title = "Teleport to Generator", Callback = function() if _selGen and doTeleport(_selGen) then return end; Window:Notify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Type = "warning", Duration = 3 }) end })
 
-TeleportMapObjects:Dropdown({
-    Title    = "Hook",
-    Key      = "TpHook",
-    Values   = _tpHookList,
-    Value    = _tpHookList[1],
-    Callback = function(v)
-        _selHook = _tpHookObjs[v]
-    end,
-})
-TeleportMapObjects:Button({
-    Title    = "Teleport to Hook",
-    Callback = function()
-        if _selHook and doTeleport(_selHook) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Duration = 3 })
-    end,
-})
+local TpHookDropdown = TeleportMapObjects:CreateDropdown({ Title = "Hook", Sidebar = true, Values = _tpHookList, Default = "", Refresh = function() rebuildTagList("HookPoint", "Hook", _tpHookList, _tpHookObjs); return _tpHookList end, RefreshInterval = 5, Callback = function(v) _selHook = _tpHookObjs[v] end })
+TeleportMapObjects:CreateButton({ Title = "Teleport to Hook", Callback = function() if _selHook and doTeleport(_selHook) then return end; Window:Notify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Type = "warning", Duration = 3 }) end })
 
-TeleportMapObjects:Dropdown({
-    Title    = "Pallet",
-    Key      = "TpPallet",
-    Values   = _tpPalList,
-    Value    = _tpPalList[1],
-    Callback = function(v)
-        _selPal = _tpPalObjs[v]
-    end,
-})
-TeleportMapObjects:Button({
-    Title    = "Teleport to Pallet",
-    Callback = function()
-        if _selPal and doTeleport(_selPal) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Duration = 3 })
-    end,
-})
+local TpPalDropdown = TeleportMapObjects:CreateDropdown({ Title = "Pallet", Sidebar = true, Values = _tpPalList, Default = "", Refresh = function() rebuildTagList("PalletPoint", "Pallet", _tpPalList, _tpPalObjs); return _tpPalList end, RefreshInterval = 5, Callback = function(v) _selPal = _tpPalObjs[v] end })
+TeleportMapObjects:CreateButton({ Title = "Teleport to Pallet", Callback = function() if _selPal and doTeleport(_selPal) then return end; Window:Notify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Type = "warning", Duration = 3 }) end })
 
-TeleportMapObjects:Dropdown({
-    Title    = "Window",
-    Key      = "TpWindow",
-    Values   = _tpWinList,
-    Value    = _tpWinList[1],
-    Callback = function(v)
-        _selWin = _tpWinObjs[v]
-    end,
-})
-TeleportMapObjects:Button({
-    Title    = "Teleport to Window",
-    Callback = function()
-        if _selWin and doTeleport(_selWin) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Duration = 3 })
-    end,
-})
+local TpWinDropdown = TeleportMapObjects:CreateDropdown({ Title = "Window", Sidebar = true, Values = _tpWinList, Default = "", Refresh = function() rebuildTagList("VaultPoint", "Window", _tpWinList, _tpWinObjs); return _tpWinList end, RefreshInterval = 5, Callback = function(v) _selWin = _tpWinObjs[v] end })
+TeleportMapObjects:CreateButton({ Title = "Teleport to Window", Callback = function() if _selWin and doTeleport(_selWin) then return end; Window:Notify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Type = "warning", Duration = 3 }) end })
 
-TeleportMapObjects:Dropdown({
-    Title    = "Gate",
-    Key      = "TpGate",
-    Values   = _tpGateList,
-    Value    = _tpGateList[1],
-    Callback = function(v)
-        _selGate = _tpGateObjs[v]
-    end,
-})
-TeleportMapObjects:Button({
-    Title    = "Teleport to Gate",
-    Callback = function()
-        if _selGate and doTeleport(_selGate) then return end
-        WindUI:Notify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Duration = 3 })
-    end,
-})
+local TpGateDropdown = TeleportMapObjects:CreateDropdown({ Title = "Gate", Sidebar = true, Values = _tpGateList, Default = "", Refresh = function() rebuildGateList(); return _tpGateList end, RefreshInterval = 5, Callback = function(v) _selGate = _tpGateObjs[v] end })
+TeleportMapObjects:CreateButton({ Title = "Teleport to Gate", Callback = function() if _selGate and doTeleport(_selGate) then return end; Window:Notify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Type = "warning", Duration = 3 }) end })
 
-TeleportMapObjects:Button({
-    Title    = "Refresh Map Objects",
-    Callback = function()
-        rebuildTagList("GeneratorPoint", "Generator", _tpGenList,  _tpGenObjs)
-        rebuildTagList("HookPoint",      "Hook",      _tpHookList, _tpHookObjs)
-        rebuildTagList("PalletPoint",    "Pallet",    _tpPalList,  _tpPalObjs)
-        rebuildTagList("VaultPoint",     "Window",    _tpWinList,  _tpWinObjs)
-        rebuildGateList()
-        _selGen = nil; _selHook = nil; _selPal = nil; _selWin = nil; _selGate = nil
-        refreshDropdown("TpGenerator", _tpGenList)
-        refreshDropdown("TpHook",      _tpHookList)
-        refreshDropdown("TpPallet",    _tpPalList)
-        refreshDropdown("TpWindow",    _tpWinList)
-        refreshDropdown("TpGate",      _tpGateList)
-        WindUI:Notify({ Title = "Teleport", Content = "Map objects refreshed.", Duration = 2 })
-    end,
-})
+TeleportMapObjects:CreateButton({ Title = "Refresh Map Objects", Callback = function()
+    rebuildTagList("GeneratorPoint", "Generator", _tpGenList,  _tpGenObjs)
+    rebuildTagList("HookPoint",      "Hook",      _tpHookList, _tpHookObjs)
+    rebuildTagList("PalletPoint",    "Pallet",    _tpPalList,  _tpPalObjs)
+    rebuildTagList("VaultPoint",     "Window",    _tpWinList,  _tpWinObjs)
+    rebuildGateList()
+    _selGen = nil; _selHook = nil; _selPal = nil; _selWin = nil; _selGate = nil
+    Window:Notify({ Title = "Teleport", Content = "Map objects refreshed.", Type = "success", Duration = 2 })
+end })
 
-local TeleportPlayers = TabTeleport:Section({ Title = "Players" })
+local TeleportPlayers = TabTeleport:CreateSection({ Title = "Players" })
 
-TeleportPlayers:Dropdown({
-    Title    = "Player",
-    Key      = "TpPlayer",
-    Values   = _tpPlrList,
-    Value    = _tpPlrList[1],
-    Callback = function(v)
-        _selPlr = _tpPlrObjs[v]
-    end,
-})
+local TpPlrDropdown = TeleportPlayers:CreateDropdown({ Title = "Player", Sidebar = true, Values = _tpPlrList, Default = "", Refresh = function() rebuildPlayerList(); return _tpPlrList end, RefreshInterval = 5, Callback = function(v) _selPlr = _tpPlrObjs[v] end })
+TeleportPlayers:CreateButton({ Title = "Teleport to Player", Callback = function()
+    if not _selPlr then
+        Window:Notify({ Title = "Teleport", Content = "No player selected.", Type = "warning", Duration = 3 })
+        return
+    end
+    local tChar = _selPlr.Character
+    local tHRP  = tChar and tChar:FindFirstChild("HumanoidRootPart")
+    if not tHRP then
+        Window:Notify({ Title = "Teleport", Content = "Player has no active character.", Type = "warning", Duration = 3 })
+        return
+    end
+    local char = getChar(); if not char then return end
+    local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
+    hrp.CFrame = tHRP.CFrame * CFrame.new(3, 0, 0)
+end })
 
-TeleportPlayers:Button({
-    Title    = "Teleport to Player",
-    Callback = function()
-        if not _selPlr then
-            WindUI:Notify({ Title = "Teleport", Content = "No player selected.", Duration = 3 })
-            return
-        end
-        local tChar = _selPlr.Character
-        local tHRP  = tChar and tChar:FindFirstChild("HumanoidRootPart")
-        if not tHRP then
-            WindUI:Notify({ Title = "Teleport", Content = "Player has no active character.", Duration = 3 })
-            return
-        end
-        local char = getChar(); if not char then return end
-        local hrp  = char:FindFirstChild("HumanoidRootPart"); if not hrp then return end
-        hrp.CFrame = tHRP.CFrame * CFrame.new(3, 0, 0)
-    end,
-})
-
-TeleportPlayers:Button({
-    Title    = "Refresh Players",
-    Callback = function()
-        rebuildPlayerList()
-        _selPlr = nil
-        refreshDropdown("TpPlayer", _tpPlrList)
-        WindUI:Notify({ Title = "Teleport", Content = "Player list refreshed.", Duration = 2 })
-    end,
-})
-
--- ===== MISC TAB CONTENT =====
+-- ===== MISC TAB =====
 do
-local PlayerMovementSection = TabMisc:Section({ Title = "Player Movement" })
+local PlayerMovementSection = TabMisc:CreateSection({ Title = "Player Movement", Opened = true })
 
-PlayerMovementSection:Slider({
-    Title = "WalkSpeed",
-    Step = 1,
-    Value = { Min = 16, Max = 500, Default = 16 },
-    Callback = function(Value)
-        NMHUB.Flags.WalkSpeed = Value
+PlayerMovementSection:CreateSlider({ Title = "WalkSpeed", Min = 16, Max = 500, Increment = 1, Suffix = " spd", Default = 16, Callback = function(Value)
+    NMHUB.Flags.WalkSpeed = Value
+    local char = LP.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.WalkSpeed = Value
+    end
+    autoSaveConfig()
+end })
+
+PlayerMovementSection:CreateSlider({ Title = "JumpPower", Min = 50, Max = 500, Increment = 1, Suffix = " jp", Default = 50, Callback = function(Value)
+    NMHUB.Flags.JumpPower = Value
+    local char = LP.Character
+    if char and char:FindFirstChild("Humanoid") then
+        char.Humanoid.JumpPower = Value
+    end
+    autoSaveConfig()
+end })
+
+PlayerMovementSection:CreateToggle({ Title = "Fly", Default = false, Callback = function(Value)
+    NMHUB.Flags.Fly = Value
+
+    if Value then
         local char = LP.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.WalkSpeed = Value
-        end
-        autoSaveConfig()
-    end,
-})
+        if not char then return end
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        if not hrp then return end
+        local hum = char:FindFirstChildOfClass("Humanoid")
+        if not hum then return end
 
-PlayerMovementSection:Slider({
-    Title = "JumpPower",
-    Step = 1,
-    Value = { Min = 50, Max = 500, Default = 50 },
-    Callback = function(Value)
-        NMHUB.Flags.JumpPower = Value
-        local char = LP.Character
-        if char and char:FindFirstChild("Humanoid") then
-            char.Humanoid.JumpPower = Value
-        end
-        autoSaveConfig()
-    end,
-})
+        hum.PlatformStand = true
 
-PlayerMovementSection:Toggle({
-    Title = "Fly",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.Fly = Value
-        if Value then
+        local bv = Instance.new("BodyVelocity")
+        bv.Name     = "FlyVelocity"
+        bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+        bv.Velocity = Vector3.zero
+        bv.Parent   = hrp
+        NMHUB.GuiElements.FlyVelocity = bv
+
+        local bg = Instance.new("BodyGyro")
+        bg.Name      = "FlyGyro"
+        bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+        bg.P         = 9e4
+        bg.CFrame    = hrp.CFrame
+        bg.Parent    = hrp
+        NMHUB.GuiElements.FlyGyro = bg
+
+        NMHUB:Disconnect("FlyHeartbeat")
+        NMHUB.Connections.FlyHeartbeat = RunService.Heartbeat:Connect(function()
+            if _G.NOMERCY_Shutdown or not NMHUB.Flags.Fly then
+                if bv and bv.Parent then bv:Destroy() end
+                if bg and bg.Parent then bg:Destroy() end
+                if hum and hum.Parent then hum.PlatformStand = false end
+                return
+            end
+            if not hrp or not hrp.Parent then return end
+
+            local cam = workspace.CurrentCamera
+            if not cam then return end
+
+            local dir = Vector3.zero
+            if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector  end
+            if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector  end
+            if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
+            if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
+                dir = dir + Vector3.new(0, 1, 0)
+            end
+            if UserInputService:IsKeyDown(Enum.KeyCode.X)
+            or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
+            or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+                dir = dir - Vector3.new(0, 1, 0)
+            end
+
+            local speed = NMHUB.Flags.WalkSpeed or 50
+            bv.Velocity = dir.Magnitude > 0 and dir.Unit * speed or Vector3.zero
+            bg.CFrame = cam.CFrame
+        end)
+
+        Window:Notify({ Title = "Fly Enabled", Content = "Space=up  X/LCtrl/LShift=down  WASD=move", Type = "success", Duration = 3 })
+    else
+        NMHUB:Disconnect("FlyHeartbeat")
+
+        if NMHUB.GuiElements.FlyVelocity then
+            pcall(function() NMHUB.GuiElements.FlyVelocity:Destroy() end)
+            NMHUB.GuiElements.FlyVelocity = nil
+        end
+        if NMHUB.GuiElements.FlyGyro then
+            pcall(function() NMHUB.GuiElements.FlyGyro:Destroy() end)
+            NMHUB.GuiElements.FlyGyro = nil
+        end
+
+        pcall(function()
+            local ch  = LP.Character
+            local hm  = ch and ch:FindFirstChildOfClass("Humanoid")
+            if hm then hm.PlatformStand = false end
+        end)
+
+        Window:Notify({ Title = "Fly Disabled", Content = "Flight mode stopped.", Type = "info", Duration = 2 })
+    end
+
+    autoSaveConfig()
+end })
+
+PlayerMovementSection:CreateToggle({ Title = "Noclip", Default = false, Callback = function(Value)
+    NMHUB.Flags.Noclip = Value
+    
+    if Value then
+        NMHUB:Disconnect("NoclipStepped")
+        NMHUB.Connections.NoclipStepped = RunService.Stepped:Connect(function()
+            if _G.NOMERCY_Shutdown or not NMHUB.Flags.Noclip then return end
+
             local char = LP.Character
             if not char then return end
-            local hrp = char:FindFirstChild("HumanoidRootPart")
-            if not hrp then return end
-            local hum = char:FindFirstChildOfClass("Humanoid")
-            if not hum then return end
-            hum.PlatformStand = true
 
-            local bv = Instance.new("BodyVelocity")
-            bv.Name     = "KingAkbarFlyVelocity"
-            bv.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-            bv.Velocity = Vector3.zero
-            bv.Parent   = hrp
-            NMHUB.GuiElements.FlyVelocity = bv
-
-            local bg = Instance.new("BodyGyro")
-            bg.Name      = "KingAkbarFlyGyro"
-            bg.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
-            bg.P         = 9e4
-            bg.CFrame    = hrp.CFrame
-            bg.Parent    = hrp
-            NMHUB.GuiElements.FlyGyro = bg
-
-            NMHUB:Disconnect("FlyHeartbeat")
-            NMHUB.Connections.FlyHeartbeat = RunService.Heartbeat:Connect(function()
-                if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Fly then
-                    if bv and bv.Parent then bv:Destroy() end
-                    if bg and bg.Parent then bg:Destroy() end
-                    if hum and hum.Parent then hum.PlatformStand = false end
-                    return
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    if NMHUB.OriginalState.CanCollide[part] == nil then
+                        NMHUB.OriginalState.CanCollide[part] = part.CanCollide
+                    end
+                    part.CanCollide = false
                 end
-                if not hrp or not hrp.Parent then return end
-                local cam = workspace.CurrentCamera
-                if not cam then return end
-
-                local dir = Vector3.zero
-                if UserInputService:IsKeyDown(Enum.KeyCode.W) then dir = dir + cam.CFrame.LookVector  end
-                if UserInputService:IsKeyDown(Enum.KeyCode.S) then dir = dir - cam.CFrame.LookVector  end
-                if UserInputService:IsKeyDown(Enum.KeyCode.A) then dir = dir - cam.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.D) then dir = dir + cam.CFrame.RightVector end
-                if UserInputService:IsKeyDown(Enum.KeyCode.Space) then
-                    dir = dir + Vector3.new(0, 1, 0)
-                end
-                if UserInputService:IsKeyDown(Enum.KeyCode.X)
-                or UserInputService:IsKeyDown(Enum.KeyCode.LeftControl)
-                or UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
-                    dir = dir - Vector3.new(0, 1, 0)
-                end
-
-                local speed = NMHUB.Flags.WalkSpeed or 50
-                bv.Velocity = dir.Magnitude > 0 and dir.Unit * speed or Vector3.zero
-                bg.CFrame = cam.CFrame
-            end)
-
-            WindUI:Notify({ Title = "Fly Enabled", Content = "Space=up  X/LCtrl/LShift=down  WASD=move", Icon = "send", Duration = 3 })
-        else
-            NMHUB:Disconnect("FlyHeartbeat")
-            if NMHUB.GuiElements.FlyVelocity then
-                pcall(function() NMHUB.GuiElements.FlyVelocity:Destroy() end)
-                NMHUB.GuiElements.FlyVelocity = nil
             end
-            if NMHUB.GuiElements.FlyGyro then
-                pcall(function() NMHUB.GuiElements.FlyGyro:Destroy() end)
-                NMHUB.GuiElements.FlyGyro = nil
-            end
-            pcall(function()
-                local ch  = LP.Character
-                local hm  = ch and ch:FindFirstChildOfClass("Humanoid")
-                if hm then hm.PlatformStand = false end
-            end)
-            WindUI:Notify({ Title = "Fly Disabled", Content = "Flight mode stopped.", Icon = "x", Duration = 2 })
-        end
-        autoSaveConfig()
-    end,
-})
-
-PlayerMovementSection:Toggle({
-    Title = "Noclip",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.Noclip = Value
-        if Value then
-            NMHUB:Disconnect("NoclipStepped")
-            NMHUB.Connections.NoclipStepped = RunService.Stepped:Connect(function()
-                if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.Noclip then return end
-                local char = LP.Character
-                if not char then return end
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") then
-                        if NMHUB.OriginalState.CanCollide[part] == nil then
-                            NMHUB.OriginalState.CanCollide[part] = part.CanCollide
-                        end
-                        part.CanCollide = false
+        end)
+        
+        Window:Notify({ Title = "Noclip Enabled", Content = "You can now walk through walls!", Type = "info", Duration = 2 })
+    else
+        NMHUB:Disconnect("NoclipStepped")
+        
+        local char = LP.Character
+        if char then
+            for _, part in pairs(char:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    if NMHUB.OriginalState.CanCollide[part] ~= nil then
+                        part.CanCollide = NMHUB.OriginalState.CanCollide[part]
+                        NMHUB.OriginalState.CanCollide[part] = nil
+                    else
+                        part.CanCollide = true
                     end
                 end
-            end)
-            WindUI:Notify({ Title = "Noclip Enabled", Content = "You can now walk through walls!", Icon = "shield-off", Duration = 2 })
-        else
-            NMHUB:Disconnect("NoclipStepped")
+            end
+        end
+        
+        Window:Notify({ Title = "Noclip Disabled", Content = "Collision restored.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
+
+PlayerMovementSection:CreateToggle({ Title = "Infinite Jump", Default = false, Callback = function(Value)
+    NMHUB.Flags.InfiniteJump = Value
+    
+    if Value then
+        local UIS = game:GetService("UserInputService")
+        
+        NMHUB:Disconnect("InfiniteJump")
+        NMHUB.Connections.InfiniteJump = UIS.JumpRequest:Connect(function()
+            if not NMHUB.Flags.InfiniteJump then return end
+            
             local char = LP.Character
-            if char then
-                for _, part in pairs(char:GetDescendants()) do
-                    if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
-                        if NMHUB.OriginalState.CanCollide[part] ~= nil then
-                            part.CanCollide = NMHUB.OriginalState.CanCollide[part]
-                            NMHUB.OriginalState.CanCollide[part] = nil
-                        else
-                            part.CanCollide = true
-                        end
-                    end
-                end
+            if char and char:FindFirstChild("Humanoid") then
+                char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
-            WindUI:Notify({ Title = "Noclip Disabled", Content = "Collision restored.", Icon = "shield", Duration = 2 })
+        end)
+        
+        Window:Notify({ Title = "Infinite Jump Enabled", Content = "You can jump infinitely!", Type = "info", Duration = 2 })
+    else
+        if NMHUB.Connections.InfiniteJump then
+            NMHUB.Connections.InfiniteJump:Disconnect()
+            NMHUB.Connections.InfiniteJump = nil
         end
-        autoSaveConfig()
-    end,
-})
+        
+        Window:Notify({ Title = "Infinite Jump Disabled", Content = "Jump returned to normal.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
 
-PlayerMovementSection:Toggle({
-    Title = "Infinite Jump",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.InfiniteJump = Value
-        if Value then
-            NMHUB:Disconnect("InfiniteJump")
-            NMHUB.Connections.InfiniteJump = UserInputService.JumpRequest:Connect(function()
-                if not NMHUB.Flags.InfiniteJump then return end
-                local char = LP.Character
-                if char and char:FindFirstChild("Humanoid") then
-                    char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
-                end
-            end)
-            WindUI:Notify({ Title = "Infinite Jump Enabled", Content = "You can jump infinitely!", Icon = "arrow-up", Duration = 2 })
-        else
-            if NMHUB.Connections.InfiniteJump then
-                NMHUB.Connections.InfiniteJump:Disconnect()
-                NMHUB.Connections.InfiniteJump = nil
+local UtilitiesSection = TabMisc:CreateSection({ Title = "Utilities" })
+
+UtilitiesSection:CreateToggle({ Title = "Anti-AFK", Default = false, Callback = function(Value)
+    NMHUB.Flags.AntiAFK = Value
+    
+    if Value then
+        local VirtualUser = game:GetService("VirtualUser")
+        
+        NMHUB:Disconnect("AntiAFK")
+        NMHUB.Connections.AntiAFK = LP.Idled:Connect(function()
+            if not NMHUB.Flags.AntiAFK then return end
+            VirtualUser:CaptureController()
+            VirtualUser:ClickButton2(Vector2.new())
+        end)
+        
+        Window:Notify({ Title = "Anti-AFK Enabled", Content = "You won't be kicked for inactivity!", Type = "success", Duration = 2 })
+    else
+        if NMHUB.Connections.AntiAFK then
+            NMHUB.Connections.AntiAFK:Disconnect()
+            NMHUB.Connections.AntiAFK = nil
+        end
+        
+        Window:Notify({ Title = "Anti-AFK Disabled", Content = "AFK detection re-enabled.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
+
+UtilitiesSection:CreateToggle({ Title = "Auto-Reconnect", Default = false, Callback = function(Value)
+    NMHUB.Flags.AutoReconnect = Value
+    
+    if Value then
+        local TeleportService = game:GetService("TeleportService")
+        
+        NMHUB:Disconnect("AutoReconnect")
+        NMHUB.Connections.AutoReconnect = game:GetService("CoreGui").DescendantAdded:Connect(function(descendant)
+            if not NMHUB.Flags.AutoReconnect then return end
+            
+            if descendant.Name == "ErrorPrompt" or descendant.Name == "ErrorFrame" then
+                task.wait(0.5)
+                pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
             end
-            WindUI:Notify({ Title = "Infinite Jump Disabled", Content = "Jump returned to normal.", Icon = "arrow-down", Duration = 2 })
+        end)
+        
+        Window:Notify({ Title = "Auto-Reconnect Enabled", Content = "Will auto-rejoin on disconnect!", Type = "success", Duration = 2 })
+    else
+        if NMHUB.Connections.AutoReconnect then
+            NMHUB.Connections.AutoReconnect:Disconnect()
+            NMHUB.Connections.AutoReconnect = nil
         end
-        autoSaveConfig()
-    end,
-})
+        
+        Window:Notify({ Title = "Auto-Reconnect Disabled", Content = "Auto-rejoin disabled.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
 
-local UtilitiesSection = TabMisc:Section({ Title = "Utilities" })
+end -- ===== END MISC TAB =====
 
-UtilitiesSection:Toggle({
-    Title = "Anti-AFK",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.AntiAFK = Value
-        if Value then
-            local VirtualUser = game:GetService("VirtualUser")
-            NMHUB:Disconnect("AntiAFK")
-            NMHUB.Connections.AntiAFK = LP.Idled:Connect(function()
-                if not NMHUB.Flags.AntiAFK then return end
-                VirtualUser:CaptureController()
-                VirtualUser:ClickButton2(Vector2.new())
-            end)
-            WindUI:Notify({ Title = "Anti-AFK Enabled", Content = "You won't be kicked for inactivity!", Icon = "clock", Duration = 2 })
-        else
-            if NMHUB.Connections.AntiAFK then
-                NMHUB.Connections.AntiAFK:Disconnect()
-                NMHUB.Connections.AntiAFK = nil
-            end
-            WindUI:Notify({ Title = "Anti-AFK Disabled", Content = "AFK detection re-enabled.", Icon = "x", Duration = 2 })
-        end
-        autoSaveConfig()
-    end,
-})
-
-UtilitiesSection:Toggle({
-    Title = "Auto-Reconnect",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.AutoReconnect = Value
-        if Value then
-            NMHUB:Disconnect("AutoReconnect")
-            NMHUB.Connections.AutoReconnect = CoreGui.DescendantAdded:Connect(function(descendant)
-                if not NMHUB.Flags.AutoReconnect then return end
-                if descendant.Name == "ErrorPrompt" or descendant.Name == "ErrorFrame" then
-                    task.wait(0.5)
-                    pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
-                end
-            end)
-            WindUI:Notify({ Title = "Auto-Reconnect Enabled", Content = "Will auto-rejoin on disconnect!", Icon = "rotate-cw", Duration = 2 })
-        else
-            if NMHUB.Connections.AutoReconnect then
-                NMHUB.Connections.AutoReconnect:Disconnect()
-                NMHUB.Connections.AutoReconnect = nil
-            end
-            WindUI:Notify({ Title = "Auto-Reconnect Disabled", Content = "Auto-rejoin disabled.", Icon = "x", Duration = 2 })
-        end
-        autoSaveConfig()
-    end,
-})
-end
-
--- ===== SETTINGS TAB CONTENT =====
+-- ===== SETTINGS TAB =====
 do
-local PerformanceSection = TabSettings:Section({ Title = "Performance" })
+local PerformanceSection = TabSettings:CreateSection({ Title = "Performance", Opened = true })
 
-PerformanceSection:Toggle({
-    Title = "FPS Boost",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.FPSBoost = Value
-        if Value then
-            local Lighting = game:GetService("Lighting")
-            local Terrain = workspace.Terrain
-            if not NMHUB.OriginalState.Lighting.Stored then
-                NMHUB.OriginalState.Lighting.GlobalShadows = Lighting.GlobalShadows
-                NMHUB.OriginalState.Lighting.FogEnd = Lighting.FogEnd
-                NMHUB.OriginalState.Terrain.WaterWaveSize = Terrain.WaterWaveSize
-                NMHUB.OriginalState.Terrain.WaterWaveSpeed = Terrain.WaterWaveSpeed
-                NMHUB.OriginalState.Terrain.WaterReflectance = Terrain.WaterReflectance
-                NMHUB.OriginalState.Terrain.WaterTransparency = Terrain.WaterTransparency
-                NMHUB.OriginalState.Lighting.Stored = true
-            end
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-            Lighting.GlobalShadows = false
-            Lighting.FogEnd = 9e9
-            Terrain.WaterWaveSize = 0
-            Terrain.WaterWaveSpeed = 0
-            Terrain.WaterReflectance = 0
-            Terrain.WaterTransparency = 0
-            WindUI:Notify({ Title = "FPS Boost Enabled", Content = "Graphics optimized for better performance!", Icon = "zap", Duration = 3 })
-        else
-            local Lighting = game:GetService("Lighting")
-            local Terrain = workspace.Terrain
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-            if NMHUB.OriginalState.Lighting.Stored then
-                Lighting.GlobalShadows = NMHUB.OriginalState.Lighting.GlobalShadows
-                Lighting.FogEnd = NMHUB.OriginalState.Lighting.FogEnd
-                Terrain.WaterWaveSize = NMHUB.OriginalState.Terrain.WaterWaveSize
-                Terrain.WaterWaveSpeed = NMHUB.OriginalState.Terrain.WaterWaveSpeed
-                Terrain.WaterReflectance = NMHUB.OriginalState.Terrain.WaterReflectance
-                Terrain.WaterTransparency = NMHUB.OriginalState.Terrain.WaterTransparency
-            else
-                Lighting.GlobalShadows = true
-                Lighting.FogEnd = 100000
-                Terrain.WaterWaveSize = 0.15
-                Terrain.WaterWaveSpeed = 10
-                Terrain.WaterReflectance = 1
-                Terrain.WaterTransparency = 1
-            end
-            WindUI:Notify({ Title = "FPS Boost Disabled", Content = "Graphics restored to default.", Icon = "x", Duration = 2 })
+PerformanceSection:CreateToggle({ Title = "FPS Boost", Default = false, Callback = function(Value)
+    NMHUB.Flags.FPSBoost = Value
+    
+    if Value then
+        local Lighting = game:GetService("Lighting")
+        local Terrain = workspace.Terrain
+        
+        if not NMHUB.OriginalState.Lighting.Stored then
+            NMHUB.OriginalState.Lighting.GlobalShadows = Lighting.GlobalShadows
+            NMHUB.OriginalState.Lighting.FogEnd = Lighting.FogEnd
+            NMHUB.OriginalState.Terrain.WaterWaveSize = Terrain.WaterWaveSize
+            NMHUB.OriginalState.Terrain.WaterWaveSpeed = Terrain.WaterWaveSpeed
+            NMHUB.OriginalState.Terrain.WaterReflectance = Terrain.WaterReflectance
+            NMHUB.OriginalState.Terrain.WaterTransparency = Terrain.WaterTransparency
+            NMHUB.OriginalState.Lighting.Stored = true
         end
-        autoSaveConfig()
-    end,
-})
 
-PerformanceSection:Toggle({
-    Title = "Remove Textures",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.RemoveTextures = Value
-        if Value then
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Decal") or obj:IsA("Texture") then
-                    if NMHUB.OriginalState.Textures[obj] == nil then
-                        NMHUB.OriginalState.Textures[obj] = obj.Transparency
-                    end
-                    obj.Transparency = 1
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                    if NMHUB.OriginalState.Textures[obj] == nil then
-                        NMHUB.OriginalState.Textures[obj] = obj.Enabled
-                    end
-                    obj.Enabled = false
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        Lighting.GlobalShadows = false
+        Lighting.FogEnd = 9e9
+        
+        Terrain.WaterWaveSize = 0
+        Terrain.WaterWaveSpeed = 0
+        Terrain.WaterReflectance = 0
+        Terrain.WaterTransparency = 0
+        
+        Window:Notify({ Title = "FPS Boost Enabled", Content = "Graphics optimized for better performance!", Type = "success", Duration = 3 })
+    else
+        local Lighting = game:GetService("Lighting")
+        local Terrain = workspace.Terrain
+
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        
+        if NMHUB.OriginalState.Lighting.Stored then
+            Lighting.GlobalShadows = NMHUB.OriginalState.Lighting.GlobalShadows
+            Lighting.FogEnd = NMHUB.OriginalState.Lighting.FogEnd
+            Terrain.WaterWaveSize = NMHUB.OriginalState.Terrain.WaterWaveSize
+            Terrain.WaterWaveSpeed = NMHUB.OriginalState.Terrain.WaterWaveSpeed
+            Terrain.WaterReflectance = NMHUB.OriginalState.Terrain.WaterReflectance
+            Terrain.WaterTransparency = NMHUB.OriginalState.Terrain.WaterTransparency
+        else
+            Lighting.GlobalShadows = true
+            Lighting.FogEnd = 100000
+            Terrain.WaterWaveSize = 0.15
+            Terrain.WaterWaveSpeed = 10
+            Terrain.WaterReflectance = 1
+            Terrain.WaterTransparency = 1
+        end
+        
+        Window:Notify({ Title = "FPS Boost Disabled", Content = "Graphics restored to default.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
+
+PerformanceSection:CreateToggle({ Title = "Remove Textures", Default = false, Callback = function(Value)
+    NMHUB.Flags.RemoveTextures = Value
+    
+    if Value then
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Decal") or obj:IsA("Texture") then
+                if NMHUB.OriginalState.Textures[obj] == nil then
+                    NMHUB.OriginalState.Textures[obj] = obj.Transparency
+                end
+                obj.Transparency = 1
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                if NMHUB.OriginalState.Textures[obj] == nil then
+                    NMHUB.OriginalState.Textures[obj] = obj.Enabled
+                end
+                obj.Enabled = false
+            end
+        end
+        
+        Window:Notify({ Title = "Textures Removed", Content = "All textures and particles disabled!", Type = "success", Duration = 2 })
+    else
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("Decal") or obj:IsA("Texture") then
+                if NMHUB.OriginalState.Textures[obj] ~= nil then
+                    obj.Transparency = NMHUB.OriginalState.Textures[obj]
+                    NMHUB.OriginalState.Textures[obj] = nil
+                else
+                    obj.Transparency = 0
+                end
+            elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
+                if NMHUB.OriginalState.Textures[obj] ~= nil then
+                    obj.Enabled = NMHUB.OriginalState.Textures[obj]
+                    NMHUB.OriginalState.Textures[obj] = nil
+                else
+                    obj.Enabled = true
                 end
             end
-            WindUI:Notify({ Title = "Textures Removed", Content = "All textures and particles disabled!", Icon = "check", Duration = 2 })
-        else
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Decal") or obj:IsA("Texture") then
-                    if NMHUB.OriginalState.Textures[obj] ~= nil then
-                        obj.Transparency = NMHUB.OriginalState.Textures[obj]
-                        NMHUB.OriginalState.Textures[obj] = nil
+        end
+        
+        Window:Notify({ Title = "Textures Restored", Content = "Visual effects re-enabled.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
+
+PerformanceSection:CreateToggle({ Title = "Performance Monitor", Default = false, Callback = function(Value)
+    NMHUB.Flags.PerformanceMonitor = Value
+    
+    if Value then
+        local ScreenGui = Instance.new("ScreenGui")
+        ScreenGui.Name = "FPSCounter"
+        ScreenGui.ResetOnSpawn = false
+        ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+        
+        local Label = Instance.new("TextLabel")
+        Label.Name = "FPSLabel"
+        Label.Size = UDim2.fromOffset(100, 30)
+        Label.Position = UDim2.new(1, -110, 0, 10)
+        Label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+        Label.BackgroundTransparency = 0.5
+        Label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        Label.TextSize = 14
+        Label.Font = Enum.Font.GothamBold
+        Label.Text = "FPS: --"
+        Label.Parent = ScreenGui
+        
+        local Corner = Instance.new("UICorner")
+        Corner.CornerRadius = UDim.new(0, 6)
+        Corner.Parent = Label
+        
+        pcall(function()
+            ScreenGui.Parent = CoreGui
+        end)
+        
+        if not ScreenGui.Parent then
+            ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+        end
+        
+        NMHUB.GuiElements.FPSCounter = ScreenGui
+        
+        NMHUB:Disconnect("FPSHeartbeat")
+        local lastTime = tick()
+        local frameCount = 0
+        NMHUB.Connections.FPSHeartbeat = RunService.Heartbeat:Connect(function()
+            if _G.NOMERCY_Shutdown or not NMHUB.Flags.PerformanceMonitor then return end
+
+            frameCount = frameCount + 1
+            local currentTime = tick()
+
+            if currentTime - lastTime >= 1 then
+                local fps = math.floor(frameCount / (currentTime - lastTime))
+
+                if Label and Label.Parent then
+                    Label.Text = "FPS: " .. fps
+
+                    if fps >= 60 then
+                        Label.TextColor3 = Color3.fromRGB(0, 255, 0)
+                    elseif fps >= 30 then
+                        Label.TextColor3 = Color3.fromRGB(255, 255, 0)
                     else
-                        obj.Transparency = 0
-                    end
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") then
-                    if NMHUB.OriginalState.Textures[obj] ~= nil then
-                        obj.Enabled = NMHUB.OriginalState.Textures[obj]
-                        NMHUB.OriginalState.Textures[obj] = nil
-                    else
-                        obj.Enabled = true
+                        Label.TextColor3 = Color3.fromRGB(255, 0, 0)
                     end
                 end
-            end
-            WindUI:Notify({ Title = "Textures Restored", Content = "Visual effects re-enabled.", Icon = "x", Duration = 2 })
-        end
-        autoSaveConfig()
-    end,
-})
 
-PerformanceSection:Toggle({
-    Title = "Performance Monitor",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.PerformanceMonitor = Value
-        if Value then
-            local ScreenGui = Instance.new("ScreenGui")
-            ScreenGui.Name = "KingAkbarFPSCounter"
-            ScreenGui.ResetOnSpawn = false
-            ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-            
-            local Label = Instance.new("TextLabel")
-            Label.Name = "FPSLabel"
-            Label.Size = UDim2.fromOffset(100, 30)
-            Label.Position = UDim2.new(1, -110, 0, 10)
-            Label.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-            Label.BackgroundTransparency = 0.5
-            Label.TextColor3 = Color3.fromRGB(255, 255, 255)
-            Label.TextSize = 14
-            Label.Font = Enum.Font.GothamBold
-            Label.Text = "FPS: --"
-            Label.Parent = ScreenGui
-            
-            local Corner = Instance.new("UICorner")
-            Corner.CornerRadius = UDim.new(0, 6)
-            Corner.Parent = Label
-            
-            pcall(function() ScreenGui.Parent = CoreGui end)
-            if not ScreenGui.Parent then
-                ScreenGui.Parent = LP:WaitForChild("PlayerGui")
+                frameCount = 0
+                lastTime = currentTime
             end
-            NMHUB.GuiElements.FPSCounter = ScreenGui
-            
-            NMHUB:Disconnect("FPSHeartbeat")
-            local lastTime = tick()
-            local frameCount = 0
-            NMHUB.Connections.FPSHeartbeat = RunService.Heartbeat:Connect(function()
-                if _G.KINGAKBAR_Shutdown or not NMHUB.Flags.PerformanceMonitor then return end
-                frameCount = frameCount + 1
-                local currentTime = tick()
-                if currentTime - lastTime >= 1 then
-                    local fps = math.floor(frameCount / (currentTime - lastTime))
-                    if Label and Label.Parent then
-                        Label.Text = "FPS: " .. fps
-                        if fps >= 60 then
-                            Label.TextColor3 = Color3.fromRGB(0, 255, 0)
-                        elseif fps >= 30 then
-                            Label.TextColor3 = Color3.fromRGB(255, 255, 0)
-                        else
-                            Label.TextColor3 = Color3.fromRGB(255, 0, 0)
-                        end
+        end)
+        
+        Window:Notify({ Title = "FPS Monitor Enabled", Content = "FPS counter displayed on screen!", Type = "success", Duration = 2 })
+    else
+        if NMHUB.GuiElements.FPSCounter then
+            NMHUB.GuiElements.FPSCounter:Destroy()
+            NMHUB.GuiElements.FPSCounter = nil
+        end
+        
+        NMHUB:Disconnect("FPSHeartbeat")
+        
+        Window:Notify({ Title = "FPS Monitor Disabled", Content = "FPS counter removed.", Type = "info", Duration = 2 })
+    end
+    
+    autoSaveConfig()
+end })
+
+local SettingsSection = TabSettings:CreateSection({ Title = "Script Management" })
+
+SettingsSection:CreateButton({ Title = "Destroy Script", Callback = function()
+    Window:Dialog({
+        Title = "Konfirmasi Destroy",
+        Content = "Yakin ingin destroy script?\nSemua fitur akan berhenti.",
+        Buttons = {
+            {
+                Title = "Ya, Destroy",
+                Callback = function()
+                    _G.NOMERCY_Shutdown = true
+                    if type(_G.NOMERCY_ShutdownHandler) == "function" then
+                        _G.NOMERCY_ShutdownHandler()
                     end
-                    frameCount = 0
-                    lastTime = currentTime
                 end
-            end)
-            WindUI:Notify({ Title = "FPS Monitor Enabled", Content = "FPS counter displayed on screen!", Icon = "activity", Duration = 2 })
-        else
-            if NMHUB.GuiElements.FPSCounter then
-                NMHUB.GuiElements.FPSCounter:Destroy()
-                NMHUB.GuiElements.FPSCounter = nil
-            end
-            NMHUB:Disconnect("FPSHeartbeat")
-            WindUI:Notify({ Title = "FPS Monitor Disabled", Content = "FPS counter removed.", Icon = "x", Duration = 2 })
-        end
-        autoSaveConfig()
-    end,
-})
+            },
+            {
+                Title = "Batal",
+                Callback = function()
+                    Window:Notify({ Title = "Dibatalkan", Content = "Script tetap berjalan.", Type = "info", Duration = 2 })
+                end
+            },
+        }
+    })
+end })
 
-local SettingsSection = TabSettings:Section({ Title = "Script Management" })
+end -- ===== END SETTINGS TAB =====
 
-SettingsSection:Button({
-    Title = "Destroy Script",
-    Callback = function()
-        WindUI:Popup({
-            Title = "Konfirmasi Destroy",
-            Content = "Yakin ingin destroy script?\nSemua fitur akan berhenti.",
-            Buttons = {
-                {
-                    Title = "Ya, Destroy",
-                    Callback = function()
-                        _G.KINGAKBAR_Shutdown = true
-                        if type(_G.KINGAKBAR_ShutdownHandler) == "function" then
-                            _G.KINGAKBAR_ShutdownHandler()
-                        end
-                    end
-                },
-                {
-                    Title = "Batal",
-                    Callback = function()
-                        WindUI:Notify({ Title = "Dibatalkan", Content = "Script tetap berjalan.", Icon = "info", Duration = 2 })
-                    end
-                },
-            }
-        })
-    end,
-})
-end
-
--- ===== CONFIG TAB CONTENT =====
+-- ===== CONFIG TAB =====
 do
 local function syncFeatureBackends()
     if NMHUB.Flags.Killer_HitboxExpand then applyHitboxExpand() else removeHitboxExpand() end
     if NMHUB.Flags.Killer_NoPalletStun then startKillerDispatcher() else stopNoPalletStunWatchdog() end
     if anyKillerFeatureOn() then startKillerDispatcher() else stopKillerDispatcher() end
+
     if NMHUB.Flags.Surv_AutoSkillCheck then startAutoSkillCheck() else stopAutoSkillCheck() end
     if NMHUB.Flags.Surv_FastRepair then startFastRepair() else stopFastRepair() end
     if NMHUB.Flags.Surv_InstantGen then startInstantGen() else stopInstantGen() end
@@ -3872,6 +3438,7 @@ local function syncFeatureBackends()
     if NMHUB.Flags.Surv_KillerAlert then startKillerAlert() else stopKillerAlert() end
     if NMHUB.Flags.Surv_AutoEscape then startAutoEscape() else stopAutoEscape() end
     if NMHUB.Flags.Surv_NoSlowdown then startSurvDispatcher() else stopSurvDispatcher() end
+
     local char = LP.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
     if hum then
@@ -3881,33 +3448,39 @@ local function syncFeatureBackends()
 end
 
 local HttpService = game:GetService("HttpService")
-local ConfigFolder = "KingAkbar/violence_district"
+local ConfigFolder = "KingVypers/violence_district"
 
 if not isfolder or not makefolder then
-    warn("[King Akbar] Config system unavailable - executor missing folder functions")
+    warn("[King Vypers] Config system unavailable - executor missing folder functions")
 else
-    if not isfolder("KingAkbar") then pcall(makefolder, "KingAkbar") end
+    if not isfolder("KingVypers") then pcall(makefolder, "KingVypers") end
     if not isfolder(ConfigFolder) then pcall(makefolder, ConfigFolder) end
 end
 
 local function getConfigList()
-    if not isfolder or not listfiles then return {} end
+    if not isfolder or not listfiles then
+        return {}
+    end
+    
     local configs = {}
     local files = listfiles(ConfigFolder)
+    
     for _, file in ipairs(files) do
         local name = file:match("([^/\\]+)%.json$")
         if name and name ~= "autoload" then
             table.insert(configs, name)
         end
     end
+    
     return configs
 end
 
 local function saveConfig(configName)
     if not writefile or not HttpService then
-        WindUI:Notify({ Title = "Config Error", Content = "Executor missing writefile function!", Icon = "alert-circle", Duration = 3 })
+        Window:Notify({ Title = "Config Error", Content = "Executor missing writefile function!", Type = "error", Duration = 3 })
         return false
     end
+    
     local config = {
         SampleValue             = NMHUB.Flags.SampleValue             or 50,
         Killer_AutoAttack       = NMHUB.Flags.Killer_AutoAttack       or false,
@@ -3939,6 +3512,7 @@ local function saveConfig(configName)
         Surv_KillerAlert    = NMHUB.Flags.Surv_KillerAlert    or false,
         Surv_AlertRange     = NMHUB.Flags.Surv_AlertRange     or 35,
         Surv_AutoEscape     = NMHUB.Flags.Surv_AutoEscape     or false,
+
         Visual_KillerESP       = NMHUB.Flags.Visual_KillerESP or false,
         Visual_SurvivorESP     = NMHUB.Flags.Visual_SurvivorESP or false,
         Visual_GeneratorESP    = NMHUB.Flags.Visual_GeneratorESP or false,
@@ -3955,6 +3529,7 @@ local function saveConfig(configName)
         Visual_MaxDist         = NMHUB.Flags.Visual_MaxDist or 500,
         Visual_UpdateRate      = NMHUB.Flags.Visual_UpdateRate or 0.5,
         Visual_MaxObjects      = NMHUB.Flags.Visual_MaxObjects or 100,
+        
         WalkSpeed         = NMHUB.Flags.WalkSpeed or 16,
         JumpPower         = NMHUB.Flags.JumpPower or 50,
         Fly               = NMHUB.Flags.Fly or false,
@@ -3966,31 +3541,37 @@ local function saveConfig(configName)
         RemoveTextures    = NMHUB.Flags.RemoveTextures or false,
         PerformanceMonitor= NMHUB.Flags.PerformanceMonitor or false,
     }
+    
     local success, err = pcall(function()
         writefile(ConfigFolder .. "/" .. configName .. ".json", HttpService:JSONEncode(config))
     end)
+    
     if success then
-        WindUI:Notify({ Title = "Config Saved", Content = "Config '" .. configName .. "' saved successfully!", Icon = "check", Duration = 3 })
+        Window:Notify({ Title = "Config Saved", Content = "Config '" .. configName .. "' saved successfully!", Type = "success", Duration = 3 })
         return true
     else
-        WindUI:Notify({ Title = "Save Failed", Content = tostring(err), Icon = "alert-circle", Duration = 3 })
+        Window:Notify({ Title = "Save Failed", Content = tostring(err), Type = "error", Duration = 3 })
         return false
     end
 end
 
 local function loadConfig(configName)
     if not readfile or not isfile or not HttpService then
-        WindUI:Notify({ Title = "Config Error", Content = "Executor missing readfile function!", Icon = "alert-circle", Duration = 3 })
+        Window:Notify({ Title = "Config Error", Content = "Executor missing readfile function!", Type = "error", Duration = 3 })
         return false
     end
+    
     local filePath = ConfigFolder .. "/" .. configName .. ".json"
+    
     if not isfile(filePath) then
-        WindUI:Notify({ Title = "Load Failed", Content = "Config '" .. configName .. "' not found!", Icon = "alert-circle", Duration = 3 })
+        Window:Notify({ Title = "Load Failed", Content = "Config '" .. configName .. "' not found!", Type = "error", Duration = 3 })
         return false
     end
+    
     local success, result = pcall(function()
         return HttpService:JSONDecode(readfile(filePath))
     end)
+    
     if success and result then
         NMHUB.Flags.SampleValue             = result.SampleValue             or 50
         NMHUB.Flags.Killer_AutoAttack       = result.Killer_AutoAttack       or false
@@ -4022,6 +3603,7 @@ local function loadConfig(configName)
         NMHUB.Flags.Surv_KillerAlert    = result.Surv_KillerAlert    or false
         NMHUB.Flags.Surv_AlertRange     = result.Surv_AlertRange     or 35
         NMHUB.Flags.Surv_AutoEscape     = result.Surv_AutoEscape     or false
+
         NMHUB.Flags.Visual_KillerESP       = result.Visual_KillerESP or false
         NMHUB.Flags.Visual_SurvivorESP     = result.Visual_SurvivorESP or false
         NMHUB.Flags.Visual_GeneratorESP    = result.Visual_GeneratorESP or false
@@ -4049,18 +3631,21 @@ local function loadConfig(configName)
         NMHUB.Flags.RemoveTextures         = result.RemoveTextures or false
         NMHUB.Flags.PerformanceMonitor     = result.PerformanceMonitor or false
         syncFeatureBackends()
-        WindUI:Notify({ Title = "Config Loaded", Content = "Config '" .. configName .. "' loaded successfully!", Icon = "check", Duration = 3 })
+        
+        Window:Notify({ Title = "Config Loaded", Content = "Config '" .. configName .. "' loaded successfully!", Type = "success", Duration = 3 })
         return true
     else
-        WindUI:Notify({ Title = "Load Failed", Content = "Failed to parse config file!", Icon = "alert-circle", Duration = 3 })
+        Window:Notify({ Title = "Load Failed", Content = "Failed to parse config file!", Type = "error", Duration = 3 })
         return false
     end
 end
 
 local function saveAutoLoad(configName)
     if not writefile or not HttpService then return end
+    
     local autoLoadFile = ConfigFolder .. "/autoload.json"
     local data = { autoLoadConfig = configName }
+    
     pcall(function()
         writefile(autoLoadFile, HttpService:JSONEncode(data))
     end)
@@ -4068,131 +3653,108 @@ end
 
 local function getAutoLoad()
     if not readfile or not isfile or not HttpService then return nil end
+    
     local autoLoadFile = ConfigFolder .. "/autoload.json"
     if not isfile(autoLoadFile) then return nil end
+    
     local success, result = pcall(function()
         return HttpService:JSONDecode(readfile(autoLoadFile))
     end)
+    
     if success and result then
         return result.autoLoadConfig
     end
+    
     return nil
 end
 
 local function clearAutoLoad()
     if not delfile then return end
+    
     local autoLoadFile = ConfigFolder .. "/autoload.json"
     pcall(delfile, autoLoadFile)
 end
 
-local ConfigSection = TabConfig:Section({ Title = "Configuration" })
+local ConfigSection = TabConfig:CreateSection({ Title = "Configuration", Opened = true })
 
-ConfigSection:Input({
-    Title = "Config Name",
-    Placeholder = "Enter config name...",
-    Callback = function(Value)
-        NMHUB.Flags.ConfigName = Value
-    end,
-})
+ConfigSection:CreateInput({ Title = "Config Name", Placeholder = "Enter config name...", Default = "", Callback = function(Value)
+    NMHUB.Flags.ConfigName = Value
+end })
 
-local ConfigDropdown = ConfigSection:Dropdown({
-    Title = "Select Config",
-    Values = getConfigList(),
-    Callback = function(Value)
-        NMHUB.Flags.SelectedConfig = Value
-    end,
-})
+local ConfigDropdown = ConfigSection:CreateDropdown({ Title = "Select Config", Values = getConfigList(), Default = "", Refresh = getConfigList, RefreshInterval = 5, Callback = function(Value)
+    NMHUB.Flags.SelectedConfig = Value
+end })
 
-ConfigSection:Button({
-    Title = "Create Config",
-    Callback = function()
-        local name = NMHUB.Flags.ConfigName
-        if not name or name == "" then
-            WindUI:Notify({ Title = "Error", Content = "Please enter a config name!", Icon = "alert-circle", Duration = 2 })
-            return
-        end
-        if saveConfig(name) then
-            ConfigDropdown:Refresh(getConfigList())
-        end
-    end,
-})
+ConfigSection:CreateButton({ Title = "Create Config", Callback = function()
+    local name = NMHUB.Flags.ConfigName
+    if not name or name == "" then
+        Window:Notify({ Title = "Error", Content = "Please enter a config name!", Type = "error", Duration = 2 })
+        return
+    end
+    
+    if saveConfig(name) then
+        -- Refresh handled automatically by VypersLib
+    end
+end })
 
-ConfigSection:Button({
-    Title = "Load Config",
-    Callback = function()
-        local name = NMHUB.Flags.SelectedConfig
-        if not name or name == "" then
-            WindUI:Notify({ Title = "Error", Content = "Please select a config!", Icon = "alert-circle", Duration = 2 })
-            return
-        end
-        loadConfig(name)
-    end,
-})
+ConfigSection:CreateButton({ Title = "Load Config", Callback = function()
+    local name = NMHUB.Flags.SelectedConfig
+    if not name or name == "" then
+        Window:Notify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
+        return
+    end
+    
+    loadConfig(name)
+end })
 
-ConfigSection:Button({
-    Title = "Refresh List",
-    Callback = function()
-        ConfigDropdown:Refresh(getConfigList())
-        WindUI:Notify({ Title = "Refreshed", Content = "Config list updated!", Icon = "check", Duration = 2 })
-    end,
-})
-
-ConfigSection:Button({
-    Title = "Delete Config",
-    Callback = function()
-        local name = NMHUB.Flags.SelectedConfig
-        if not name or name == "" then
-            WindUI:Notify({ Title = "Error", Content = "Please select a config!", Icon = "alert-circle", Duration = 2 })
-            return
-        end
-        WindUI:Popup({
-            Title = "Confirm Delete",
-            Content = "Delete config '" .. name .. "'?",
-            Buttons = {
-                {
-                    Title = "Yes, Delete",
-                    Callback = function()
-                        if delfile then
-                            pcall(delfile, ConfigFolder .. "/" .. name .. ".json")
-                            ConfigDropdown:Refresh(getConfigList())
-                            WindUI:Notify({ Title = "Deleted", Content = "Config deleted!", Icon = "check", Duration = 2 })
-                        end
+ConfigSection:CreateButton({ Title = "Delete Config", Callback = function()
+    local name = NMHUB.Flags.SelectedConfig
+    if not name or name == "" then
+        Window:Notify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
+        return
+    end
+    
+    Window:Dialog({
+        Title = "Confirm Delete",
+        Content = "Delete config '" .. name .. "'?",
+        Buttons = {
+            {
+                Title = "Yes, Delete",
+                Callback = function()
+                    if delfile then
+                        pcall(delfile, ConfigFolder .. "/" .. name .. ".json")
+                        Window:Notify({ Title = "Deleted", Content = "Config deleted!", Type = "success", Duration = 2 })
                     end
-                },
-                { Title = "Cancel" },
-            }
-        })
-    end,
-})
+                end
+            },
+            { Title = "Cancel" },
+        }
+    })
+end })
 
-local AutoLoadSection = TabConfig:Section({ Title = "Auto Load & Auto Save" })
+local AutoLoadSection = TabConfig:CreateSection({ Title = "Auto Load & Auto Save" })
 
-AutoLoadSection:Toggle({
-    Title = "Enable Auto Load",
-    Value = getAutoLoad() ~= nil,
-    Callback = function(Value)
-        NMHUB.Flags.AutoLoadEnabled = Value
-        if not Value then clearAutoLoad() end
-    end,
-})
+AutoLoadSection:CreateToggle({ Title = "Enable Auto Load", Default = getAutoLoad() ~= nil, Callback = function(Value)
+    NMHUB.Flags.AutoLoadEnabled = Value
+    if not Value then clearAutoLoad() end
+end })
 
-AutoLoadSection:Toggle({
-    Title = "Enable Auto Save",
-    Value = false,
-    Callback = function(Value)
-        NMHUB.Flags.AutoSaveEnabled = Value
-        if Value then
-            WindUI:Notify({ Title = "Auto Save Enabled", Content = "Settings will be saved automatically!", Icon = "check", Duration = 2 })
-        end
-    end,
-})
+AutoLoadSection:CreateToggle({ Title = "Enable Auto Save", Default = false, Callback = function(Value)
+    NMHUB.Flags.AutoSaveEnabled = Value
+    
+    if Value then
+        Window:Notify({ Title = "Auto Save Enabled", Content = "Settings will be saved automatically!", Type = "success", Duration = 2 })
+    end
+end })
 
 autoSaveConfig = function()
     if not NMHUB.Flags.AutoSaveEnabled then return end
+    
     local configName = NMHUB.Flags.SelectedConfig or getAutoLoad()
     if not configName or configName == "" then
         configName = "autosave"
     end
+    
     if writefile and HttpService then
         local config = {
             SampleValue             = NMHUB.Flags.SampleValue             or 50,
@@ -4225,6 +3787,7 @@ autoSaveConfig = function()
             Surv_KillerAlert    = NMHUB.Flags.Surv_KillerAlert    or false,
             Surv_AlertRange     = NMHUB.Flags.Surv_AlertRange     or 35,
             Surv_AutoEscape     = NMHUB.Flags.Surv_AutoEscape     or false,
+
             Visual_KillerESP       = NMHUB.Flags.Visual_KillerESP or false,
             Visual_SurvivorESP     = NMHUB.Flags.Visual_SurvivorESP or false,
             Visual_GeneratorESP    = NMHUB.Flags.Visual_GeneratorESP or false,
@@ -4252,162 +3815,50 @@ autoSaveConfig = function()
             RemoveTextures    = NMHUB.Flags.RemoveTextures or false,
             PerformanceMonitor= NMHUB.Flags.PerformanceMonitor or false,
         }
+        
         pcall(function()
             writefile(ConfigFolder .. "/" .. configName .. ".json", HttpService:JSONEncode(config))
         end)
     end
 end
 
-AutoLoadSection:Button({
-    Title = "Set as Auto Load",
-    Callback = function()
-        local name = NMHUB.Flags.SelectedConfig
-        if not name or name == "" then
-            WindUI:Notify({ Title = "Error", Content = "Please select a config first!", Icon = "alert-circle", Duration = 2 })
-            return
-        end
-        saveAutoLoad(name)
-        WindUI:Notify({ Title = "Auto Load Set", Content = "Config '" .. name .. "' will load on startup!", Icon = "check", Duration = 3 })
-    end,
-})
+AutoLoadSection:CreateButton({ Title = "Set as Auto Load", Callback = function()
+    local name = NMHUB.Flags.SelectedConfig
+    if not name or name == "" then
+        Window:Notify({ Title = "Error", Content = "Please select a config first!", Type = "error", Duration = 2 })
+        return
+    end
+    
+    saveAutoLoad(name)
+    Window:Notify({ Title = "Auto Load Set", Content = "Config '" .. name .. "' will load on startup!", Type = "success", Duration = 3 })
+end })
 
-AutoLoadSection:Button({
-    Title = "Clear Auto Load",
-    Callback = function()
-        clearAutoLoad()
-        WindUI:Notify({ Title = "Auto Load Cleared", Content = "No config will auto-load on startup.", Icon = "check", Duration = 2 })
-    end,
-})
+AutoLoadSection:CreateButton({ Title = "Clear Auto Load", Callback = function()
+    clearAutoLoad()
+    Window:Notify({ Title = "Auto Load Cleared", Content = "No config will auto-load on startup.", Type = "info", Duration = 2 })
+end })
 
 NMHUB.Loops.AutoLoadTask = task.spawn(function()
     task.wait(0.5)
-    if _G.KINGAKBAR_Shutdown then return end
+    if _G.NOMERCY_Shutdown then return end
+
     local autoLoadConfig = getAutoLoad()
     if autoLoadConfig and NMHUB.Flags.AutoLoadEnabled ~= false then
-        print("[King Akbar] Auto-loading config: " .. autoLoadConfig)
+        print("[King Vypers] Auto-loading config: " .. autoLoadConfig)
         loadConfig(autoLoadConfig)
     end
     NMHUB.Loops.AutoLoadTask = nil
 end)
 
-local function createToggleButton()
-    local success, error = pcall(function()
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "KingAkbarToggle"
-        screenGui.ResetOnSpawn = false
-        screenGui.DisplayOrder = 999
-        screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-        
-        local frame = Instance.new("Frame")
-        frame.Name = "ToggleFrame"
-        frame.Size = UDim2.fromOffset(60, 60)
-        frame.Position = UDim2.new(0, 20, 0.5, -30)
-        frame.BackgroundTransparency = 1
-        frame.BorderSizePixel = 0
-        frame.Active = true
-        frame.Parent = screenGui
-
-        local icon = Instance.new("ImageLabel")
-        icon.Name = "Icon"
-        icon.Size = UDim2.fromOffset(56, 56)
-        icon.Position = UDim2.fromScale(0.5, 0.5)
-        icon.AnchorPoint = Vector2.new(0.5, 0.5)
-        icon.BackgroundTransparency = 1
-        icon.BorderSizePixel = 0
-        icon.ScaleType = Enum.ScaleType.Fit
-        
-        local iconLoaded = pcall(function()
-            icon.Image = "rbxassetid://91115084979317"
-        end)
-        
-        if not iconLoaded then
-            warn("[King Akbar] Failed to load icon asset, using placeholder")
-            icon.Image = ""
-            icon.BackgroundColor3 = Color3.fromRGB(255, 50, 50)
-            icon.BackgroundTransparency = 0.3
-            local corner = Instance.new("UICorner")
-            corner.CornerRadius = UDim.new(0.5, 0)
-            corner.Parent = icon
-        end
-        icon.Parent = frame
-
-        local button = Instance.new("TextButton")
-        button.Name = "ClickDetector"
-        button.Size = UDim2.fromScale(1, 1)
-        button.BackgroundTransparency = 1
-        button.Text = ""
-        button.Parent = frame
-
-        local dragging = false
-        local dragStart = nil
-        local startPos = nil
-        local hasMoved = false
-
-        NMHUB:Disconnect("ToggleInputBegan")
-        NMHUB.Connections.ToggleInputBegan = button.InputBegan:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 
-            or input.UserInputType == Enum.UserInputType.Touch then
-                dragging = true
-                hasMoved = false
-                dragStart = input.Position
-                startPos = frame.Position
-            end
-        end)
-
-        NMHUB:Disconnect("ToggleInputChanged")
-        NMHUB.Connections.ToggleInputChanged = UserInputService.InputChanged:Connect(function(input)
-            if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement 
-            or input.UserInputType == Enum.UserInputType.Touch) then
-                local delta = input.Position - dragStart
-                if delta.Magnitude > 5 then
-                    hasMoved = true
-                end
-                frame.Position = UDim2.new(
-                    startPos.X.Scale, startPos.X.Offset + delta.X,
-                    startPos.Y.Scale, startPos.Y.Offset + delta.Y
-                )
-            end
-        end)
-
-        NMHUB:Disconnect("ToggleInputEnded")
-        NMHUB.Connections.ToggleInputEnded = button.InputEnded:Connect(function(input)
-            if input.UserInputType == Enum.UserInputType.MouseButton1 
-            or input.UserInputType == Enum.UserInputType.Touch then
-                if not hasMoved then
-                    pcall(function() Window:Toggle() end)
-                end
-                dragging = false
-            end
-        end)
-
-        NMHUB.GuiElements.ToggleGui = screenGui
-        NMHUB.GuiElements.ToggleFrame = frame
-        
-        local parentOk = pcall(function() screenGui.Parent = CoreGui end)
-        if not parentOk then
-            screenGui.Parent = LP:WaitForChild("PlayerGui")
-        end
-    end)
-    if not success then
-        warn("[King Akbar] Failed to create toggle button:", error)
-    end
-end
-
-NMHUB.Loops.CreateToggleTask = task.spawn(function()
-    task.wait(0.5)
-    if _G.KINGAKBAR_Shutdown then return end
-    createToggleButton()
-    NMHUB.Loops.CreateToggleTask = nil
-end)
-end
+end -- ===== END CONFIG TAB =====
 
 -- ===== SHUTDOWN HANDLER =====
-_G.KINGAKBAR_ShutdownHandler = function()
+_G.NOMERCY_ShutdownHandler = function()
     if NMHUB._ShuttingDown then return end
     NMHUB._ShuttingDown = true
-    print("[King Akbar] Shutdown initiated...")
+    print("[King Vypers] Shutdown initiated...")
 
-    _G.KINGAKBAR_Shutdown = true
+    _G.NOMERCY_Shutdown = true
     
     pcall(function()
         if LP.Character and LP.Character:FindFirstChild("Humanoid") then
@@ -4570,22 +4021,16 @@ _G.KINGAKBAR_ShutdownHandler = function()
     end)
     
     pcall(function()
-        if WindUI and WindUI.Destroy then
-            WindUI:Destroy()
-        end
-    end)
-    
-    pcall(function()
-        if WindUI and WindUI.GUI then
-            WindUI.GUI:Destroy()
+        if Vypers and Vypers.Destroy then
+            Vypers:Destroy()
         end
     end)
     
     if _G.NMHUB == NMHUB then _G.NMHUB = nil end
-    _G.KINGAKBAR_ViolenceDistrict_Loaded = nil
-    _G.KINGAKBAR_ShutdownHandler = nil
+    _G.NOMERCY_ViolenceDistrict_Loaded = nil
+    _G.NOMERCY_ShutdownHandler = nil
     
-    print("[King Akbar] Shutdown complete")
+    print("[King Vypers] Shutdown complete")
 end
 
 -- ===== MOBILE UI SYSTEM =====
@@ -4597,7 +4042,7 @@ local function _CreateMobileUI()
     if not pg then return end
 
     local sg = Instance.new("ScreenGui")
-    sg.Name = "KA_MobileUI"; sg.ResetOnSpawn = false
+    sg.Name = "MobileUI"; sg.ResetOnSpawn = false
     sg.IgnoreGuiInset = true; sg.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
     sg.DisplayOrder = 100; sg.Parent = pg
     NMHUB.GuiElements.MobileUI = sg
@@ -4612,7 +4057,7 @@ local function _CreateMobileUI()
     radarF.BorderSizePixel = 0; radarF.Visible = false; radarF.Parent = sg
     Instance.new("UICorner", radarF).CornerRadius = UDim.new(0, 8)
     local rStroke = Instance.new("UIStroke")
-    rStroke.Color = Color3.fromRGB(251, 146, 60); rStroke.Thickness = 2; rStroke.Parent = radarF
+    rStroke.Color = Color3.fromRGB(120, 90, 240); rStroke.Thickness = 2; rStroke.Parent = radarF
     local ch = Instance.new("Frame")
     ch.Size = UDim2.new(1, -20, 0, 1); ch.Position = UDim2.new(0, 10, 0.5, 0)
     ch.BackgroundColor3 = Color3.fromRGB(45, 45, 45); ch.BorderSizePixel = 0; ch.Parent = radarF
@@ -4621,7 +4066,7 @@ local function _CreateMobileUI()
     cv.BackgroundColor3 = Color3.fromRGB(45, 45, 45); cv.BorderSizePixel = 0; cv.Parent = radarF
     local cdot = Instance.new("Frame")
     cdot.Size = UDim2.new(0, 10, 0, 10); cdot.Position = UDim2.new(0.5, -5, 0.5, -5)
-    cdot.BackgroundColor3 = Color3.fromRGB(251, 146, 60); cdot.BorderSizePixel = 0
+    cdot.BackgroundColor3 = Color3.fromRGB(120, 90, 240); cdot.BorderSizePixel = 0
     cdot.ZIndex = 5; cdot.Parent = radarF
     Instance.new("UICorner", cdot).CornerRadius = UDim.new(1, 0)
     _MobileGui.RadarFrame = radarF
@@ -4644,7 +4089,7 @@ local function _CreateMobileUI()
     end
 
     local aimSG = Instance.new("ScreenGui")
-    aimSG.Name = "KA_AimBtn"; aimSG.ResetOnSpawn = false
+    aimSG.Name = "AimBtn"; aimSG.ResetOnSpawn = false
     aimSG.IgnoreGuiInset = true
     aimSG.ZIndexBehavior = Enum.ZIndexBehavior.AlwaysOnTop
     aimSG.Parent = pg
@@ -4750,11 +4195,12 @@ end
 
 task.spawn(function()
     task.wait(2)
-    if _G.KINGAKBAR_Shutdown then return end
+    if _G.NOMERCY_Shutdown then return end
     pcall(_CreateMobileUI)
+
     if isMobile then
         NMHUB.Connections.MobileUIHeartbeat = RunService.Heartbeat:Connect(function()
-            if _G.KINGAKBAR_Shutdown then return end
+            if _G.NOMERCY_Shutdown then return end
             pcall(_UpdateMobileRadar)
             if _MobileGui.AimBtn then
                 _MobileGui.AimBtn.Visible = NMHUB.Flags.Aimbot_Enabled or false
@@ -4763,18 +4209,20 @@ task.spawn(function()
     end
 end)
 
--- ===== FINAL NOTIFICATION =====
+-- ===== ENABLE CONFIG & FINAL NOTIFICATION =====
+Vypers:EnableConfig("default")
+
 NMHUB.Loops.FinalNotificationTask = task.spawn(function()
     task.wait(1)
-    if _G.KINGAKBAR_Shutdown then return end
+    if _G.NOMERCY_Shutdown then return end
 
-    WindUI:Notify({
-        Title = "King Akbar Hub",
+    Window:Notify({
+        Title = "King Vypers",
         Content = "Violence District v" .. VERSION .. " loaded successfully!",
-        Icon = "crown",
+        Type = "success",
         Duration = 5
     })
 
     NMHUB.Loops.FinalNotificationTask = nil
-    print("[King Akbar] Violence District v" .. VERSION .. " Loaded!")
+    print("[King Vypers] Violence District v" .. VERSION .. " Loaded!")
 end)
