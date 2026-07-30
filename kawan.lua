@@ -1,5 +1,5 @@
 -- ===== VERSION & RELOAD GUARD =====
-local VERSION = "2.0.3"
+local VERSION = "2.0.4"
 
 if _G.NOMERCY_ViolenceDistrict_Loaded then
     warn("[King Vypers] Violence District already loaded..")
@@ -131,8 +131,8 @@ if not Vypers then
     return
 end
 
-Vypers:SetFolder("KingVypers")
-Vypers:SetAccent(Color3.fromRGB(120, 90, 240))
+pcall(function() if Vypers.SetFolder then Vypers:SetFolder("KingVypers") end end)
+pcall(function() if Vypers.SetAccent then Vypers:SetAccent(Color3.fromRGB(120, 90, 240)) end end)
 
 pcall(function()
     if LP.Character and LP.Character:FindFirstChild("Humanoid") then
@@ -142,35 +142,56 @@ pcall(function()
 end)
 
 -- ===== WINDOW CREATION =====
-local Window = Vypers:CreateWindow({
-    Title           = "King Vypers",
-    Icon            = "rbxassetid://139467646163013",
-    FloatIconRadius = 14,
-    SubTitle        = "v2.0",
-    Author          = "by Yeremia",
-    Background      = "rbxassetid://97514324988224",
-    BackgroundTransparency = 0,
-    Overlay         = 0.3,
-    Size            = UDim2.new(0, 560, 0, 360),
-    MinSize         = Vector2.new(480, 300),
-    MaxSize         = Vector2.new(720, 480),
-    SideBarWidth    = 150,
-    Resizable       = true,
-    Transparent     = false,
-    SurfaceTransparency = 0.3,
-    SectionTransparency = 0.3,
-    TabTransparency     = 0.3,
-    ItemColor    = Color3.fromRGB(40, 40, 60),
-    SectionColor = Color3.fromRGB(28, 28, 44),
-    TabColor     = Color3.fromRGB(34, 34, 52),
-    WindowColor  = Color3.fromRGB(20, 20, 30),
-    Accent       = Color3.fromRGB(120, 90, 240),
-    ToggleKey   = Enum.KeyCode.RightShift,
-    Folder      = "KingVypers",
-})
+local Window = nil
+pcall(function()
+    Window = Vypers:CreateWindow({
+        Title           = "King Vypers",
+        Icon            = "rbxassetid://139467646163013",
+        FloatIconRadius = 14,
+        SubTitle        = "v2.0",
+        Author          = "by Yeremia",
+        Background      = "rbxassetid://97514324988224",
+        BackgroundTransparency = 0,
+        Overlay         = 0.3,
+        Size            = UDim2.new(0, 560, 0, 360),
+        MinSize         = Vector2.new(480, 300),
+        MaxSize         = Vector2.new(720, 480),
+        SideBarWidth    = 150,
+        Resizable       = true,
+        Transparent     = false,
+        SurfaceTransparency = 0.3,
+        SectionTransparency = 0.3,
+        TabTransparency     = 0.3,
+        ItemColor    = Color3.fromRGB(40, 40, 60),
+        SectionColor = Color3.fromRGB(28, 28, 44),
+        TabColor     = Color3.fromRGB(34, 34, 52),
+        WindowColor  = Color3.fromRGB(20, 20, 30),
+        Accent       = Color3.fromRGB(120, 90, 240),
+        ToggleKey   = Enum.KeyCode.RightShift,
+        Folder      = "KingVypers",
+    })
+end)
 
-Window:Tag({ Title = "BETA", Color = Color3.fromRGB(220, 180, 70) })
-Window:Tag({ Title = "Online", Icon = "bolt", Color = Color3.fromRGB(80, 190, 120) })
+if not Window then
+    error("[King Vypers] Gagal membuat Window UI! VypersLib mungkin error.")
+    return
+end
+
+-- Safe UI Wrappers to prevent "attempt to call a nil value"
+local function SafeNotify(...)
+    if Window and Window.Notify then pcall(Window.Notify, Window, ...) end
+end
+
+local function SafeDialog(...)
+    if Window and Window.Dialog then pcall(Window.Dialog, Window, ...) end
+end
+
+if Window.Tag then
+    pcall(function()
+        Window:Tag({ Title = "BETA", Color = Color3.fromRGB(220, 180, 70) })
+        Window:Tag({ Title = "Online", Icon = "bolt", Color = Color3.fromRGB(80, 190, 120) })
+    end)
+end
 
 NMHUB.Window = Window
 NMHUB.Ready = true
@@ -189,29 +210,30 @@ local TabSettings    = Window:CreateTab({ Title = "Settings", Icon = "settings" 
 
 -- ===== INFORMATION TAB =====
 local InfoSec = TabInformation:CreateSection({ Title = "Information", Opened = true })
-InfoSec:CreateParagraph({
-    Id = "IntroText",
-    Title = "King Vypers",
-    Text  = "King Vypers is a 100% free and keyless script.\nJoin our Discord to get the latest updates.",
-    Buttons = {
-        { Id = "BtnDiscord", Title = "Discord", Variant = "Primary", Icon = "copy", Callback = function()
-            local invite = "https://discord.gg/gJJbCyzcMY"
-            if setclipboard then
-                pcall(setclipboard, invite)
-                Window:Notify({ Title = "Discord", Content = "Link copied to clipboard!", Type = "success", Duration = 3 })
-            else
-                Window:Notify({ Title = "Discord", Content = invite, Type = "info", Duration = 10 })
-            end
-        end },
-    },
-})
+if InfoSec.CreateParagraph then
+    InfoSec:CreateParagraph({
+        Id = "IntroText",
+        Title = "King Vypers",
+        Text  = "King Vypers is a 100% free and keyless script.\nJoin our Discord to get the latest updates.",
+        Buttons = {
+            { Id = "BtnDiscord", Title = "Discord", Variant = "Primary", Icon = "copy", Callback = function()
+                local invite = "https://discord.gg/gJJbCyzcMY"
+                if setclipboard then
+                    pcall(setclipboard, invite)
+                    SafeNotify({ Title = "Discord", Content = "Link copied to clipboard!", Type = "success", Duration = 3 })
+                else
+                    SafeNotify({ Title = "Discord", Content = invite, Type = "info", Duration = 10 })
+                end
+            end },
+        },
+    })
+end
 
 -- ===== GAME STATE & REMOTES =====
 local CollectionService = game:GetService("CollectionService")
 local Remotes = ReplicatedStorage:WaitForChild("Remotes", 5)
 local RemAttacks, RemCarry, RemPallet, RemGen, RemItems, RemHeal, RemWindow
 
--- PERBAIKAN: Memastikan SEMUA remote ter-load tanpa henti sampai semua ada
 local function ensureRemotes()
     if not Remotes then return false end
     pcall(function()
@@ -977,7 +999,7 @@ SurvivorObjectives:CreateToggle({ Id = "Surv_InstantGen", Title = "Instant Gener
     NMHUB.Flags.Surv_InstantGen = v
     if v then startInstantGen() else stopInstantGen() end
     if v then
-        Window:Notify({ Title = "⚠ Instant Generator", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
+        SafeNotify({ Title = "⚠ Instant Generator", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
     end
     autoSaveConfig()
 end })
@@ -1005,7 +1027,7 @@ SurvivorDefense:CreateToggle({ Id = "Surv_InstantHeal", Title = "Instant Heal", 
     NMHUB.Flags.Surv_InstantHeal = v
     if v then startInstantHeal() else stopInstantHeal() end
     if v then
-        Window:Notify({ Title = "⚠ Instant Heal", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
+        SafeNotify({ Title = "⚠ Instant Heal", Content = "HIGH DETECTION RISK — use sparingly!", Type = "warning", Duration = 5 })
     end
     autoSaveConfig()
 end })
@@ -1056,7 +1078,7 @@ SurvivorSafety:CreateToggle({ Id = "Surv_AutoEscape", Title = "Auto Escape", Def
     NMHUB.Flags.Surv_AutoEscape = v
     if v then startAutoEscape() else stopAutoEscape() end
     if v then
-        Window:Notify({ Title = "⚠ Auto Escape", Content = "EXTREME DETECTION RISK — expect bans!", Type = "error", Duration = 6 })
+        SafeNotify({ Title = "⚠ Auto Escape", Content = "EXTREME DETECTION RISK — expect bans!", Type = "error", Duration = 6 })
     end
     autoSaveConfig()
 end })
@@ -1947,8 +1969,8 @@ local function startAutoCancelMonitor()
     end)
     NMHUB.Connections.AutoCancelGen = {
         Disconnect = function()
-            _autoCancelConn:Disconnect()
-            _autoCancelConn2:Disconnect()
+            pcall(function() _autoCancelConn:Disconnect() end)
+            pcall(function() _autoCancelConn2:Disconnect() end)
         end
     }
 end
@@ -2115,9 +2137,11 @@ local function ExecuteParry_KV()
                             local cx = gui.AbsolutePosition.X + (gui.AbsoluteSize.X / 2)
                             local cy = gui.AbsolutePosition.Y + (gui.AbsoluteSize.Y / 2)
                             task.spawn(function()
-                                VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                                task.wait(0.02)
-                                VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                                pcall(function()
+                                    VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                                    task.wait(0.02)
+                                    VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                                end)
                             end)
                             clickedUI = true
                         end
@@ -2130,9 +2154,11 @@ local function ExecuteParry_KV()
                 if cam then
                     local cx, cy = cam.ViewportSize.X / 2, cam.ViewportSize.Y / 2
                     task.spawn(function()
-                        VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
-                        task.wait(0.02)
-                        VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                        pcall(function()
+                            VIM:SendMouseButtonEvent(cx, cy, 0, true, game, 1)
+                            task.wait(0.02)
+                            VIM:SendMouseButtonEvent(cx, cy, 0, false, game, 1)
+                        end)
                     end)
                 end
             end
@@ -2160,12 +2186,13 @@ local function WatchKillerAnimations(char, plr)
     if _parryAnimWatchers[char] then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     local anim = hum and hum:FindFirstChild("Animator")
-    if not anim then return end
+    if not anim or not anim.AnimationPlayed then return end
 
     local conn = anim.AnimationPlayed:Connect(function(track)
         if not NMHUB.Flags.Surv_AutoParry or not isSurvivor() then return end
         
-        local animId = tostring(track.Animation.AnimationId):lower()
+        local animObj = track.Animation
+        local animId = (animObj and animObj.AnimationId) and tostring(animObj.AnimationId):lower() or ""
         local prio = track.Priority
         local isAttack = false
 
@@ -2193,7 +2220,7 @@ local function WatchKillerAnimations(char, plr)
     char.AncestryChanged:Connect(function(_, parent)
         if not parent then
             if _parryAnimWatchers[char] then
-                _parryAnimWatchers[char]:Disconnect()
+                pcall(function() _parryAnimWatchers[char]:Disconnect() end)
                 _parryAnimWatchers[char] = nil
             end
         end
@@ -2209,7 +2236,9 @@ local function SetupKillerWatcher(plr)
         end
     end
     
-    plr.CharacterAdded:Connect(checkAndWatch)
+    if plr.CharacterAdded then
+        plr.CharacterAdded:Connect(checkAndWatch)
+    end
     if plr.Character then
         task.spawn(function() checkAndWatch(plr.Character) end)
     end
@@ -2221,8 +2250,6 @@ end
 Players.PlayerAdded:Connect(SetupKillerWatcher)
 
 startAutoParry = function()
-    -- Auto Parry berjalan otomatis melalui watcher animasi.
-    -- Saat diaktifkan, kita pastikan semua killer yang sedang ada di-map di-watch.
     for _, pl in ipairs(Players:GetPlayers()) do
         if pl.Team and pl.Team.Name:lower():find("killer") and pl.Character then
             WatchKillerAnimations(pl.Character, pl)
@@ -2233,7 +2260,6 @@ end
 stopAutoParry = function()
     -- Tidak perlu disconnect watcher karena flag `NMHUB.Flags.Surv_AutoParry`
     -- sudah menangani penonaktifan eksekusi di dalam `WatchKillerAnimations`.
-    -- Ini memastikan script tetap ringan tanpa harus rebuild koneksi terus menerus.
 end
 
 local _autoWiggleConn = nil
@@ -2446,7 +2472,7 @@ startFleeKiller = function()
         if not pos then return end
         performSafeTeleport(CFrame.new(pos + Vector3.new(0, 3, 4)))
         _lastFlee = tick()
-        Window:Notify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Flee Killer", Content = "Teleported to farthest generator!", Type = "info", Duration = 2 })
     end)
     NMHUB.Connections.FleeKiller = _fleeConn
 end
@@ -2477,7 +2503,7 @@ startKillerAlert = function()
         local inRange = dist <= alertRange
         if inRange and not _wasInRange then
             if (tick() - _lastAlert) > 3.0 then
-                Window:Notify({
+                SafeNotify({
                     Title = "⚠ Killer Nearby!",
                     Content = string.format("Killer is %.0f studs away!", dist),
                     Type   = "warning",
@@ -2981,7 +3007,7 @@ local TpGenDropdown = TeleportMapObjects:CreateDropdown({
 })
 TeleportMapObjects:CreateButton({ Id = "BtnTpGen", Title = "Teleport to Generator", Callback = function() 
     if _selGen and doTeleport(_selGen) then return end 
-    Window:Notify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
+    SafeNotify({ Title = "Teleport", Content = "No generator selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
 end })
 
 local TpHookDropdown = TeleportMapObjects:CreateDropdown({ 
@@ -2991,7 +3017,7 @@ local TpHookDropdown = TeleportMapObjects:CreateDropdown({
 })
 TeleportMapObjects:CreateButton({ Id = "BtnTpHook", Title = "Teleport to Hook", Callback = function() 
     if _selHook and doTeleport(_selHook) then return end 
-    Window:Notify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
+    SafeNotify({ Title = "Teleport", Content = "No hook selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
 end })
 
 local TpPalDropdown = TeleportMapObjects:CreateDropdown({ 
@@ -3001,7 +3027,7 @@ local TpPalDropdown = TeleportMapObjects:CreateDropdown({
 })
 TeleportMapObjects:CreateButton({ Id = "BtnTpPal", Title = "Teleport to Pallet", Callback = function() 
     if _selPal and doTeleport(_selPal) then return end 
-    Window:Notify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
+    SafeNotify({ Title = "Teleport", Content = "No pallet selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
 end })
 
 local TpWinDropdown = TeleportMapObjects:CreateDropdown({ 
@@ -3011,7 +3037,7 @@ local TpWinDropdown = TeleportMapObjects:CreateDropdown({
 })
 TeleportMapObjects:CreateButton({ Id = "BtnTpWin", Title = "Teleport to Window", Callback = function() 
     if _selWin and doTeleport(_selWin) then return end 
-    Window:Notify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
+    SafeNotify({ Title = "Teleport", Content = "No window selected or map not loaded yet.", Type = "warning", Duration = 3 }) 
 end })
 
 local TpGateDropdown = TeleportMapObjects:CreateDropdown({ 
@@ -3021,7 +3047,7 @@ local TpGateDropdown = TeleportMapObjects:CreateDropdown({
 })
 TeleportMapObjects:CreateButton({ Id = "BtnTpGate", Title = "Teleport to Gate", Callback = function() 
     if _selGate and doTeleport(_selGate) then return end 
-    Window:Notify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Type = "warning", Duration = 3 }) 
+    SafeNotify({ Title = "Teleport", Content = "No gate selected or gate not found in map.", Type = "warning", Duration = 3 }) 
 end })
 
 TeleportMapObjects:CreateButton({ Id = "BtnRefreshMap", Title = "Refresh Map Objects", Callback = function()
@@ -3031,12 +3057,12 @@ TeleportMapObjects:CreateButton({ Id = "BtnRefreshMap", Title = "Refresh Map Obj
     rebuildTagList("VaultPoint",     "Window",    _tpWinList,  _tpWinObjs)
     rebuildGateList()
     _selGen = nil; _selHook = nil; _selPal = nil; _selWin = nil; _selGate = nil
-    TpGenDropdown:Refresh(_tpGenList)
-    TpHookDropdown:Refresh(_tpHookList)
-    TpPalDropdown:Refresh(_tpPalList)
-    TpWinDropdown:Refresh(_tpWinList)
-    TpGateDropdown:Refresh(_tpGateList)
-    Window:Notify({ Title = "Teleport", Content = "Map objects refreshed.", Type = "success", Duration = 2 })
+    if TpGenDropdown and TpGenDropdown.Refresh then pcall(TpGenDropdown.Refresh, _tpGenList) end
+    if TpHookDropdown and TpHookDropdown.Refresh then pcall(TpHookDropdown.Refresh, _tpHookList) end
+    if TpPalDropdown and TpPalDropdown.Refresh then pcall(TpPalDropdown.Refresh, _tpPalList) end
+    if TpWinDropdown and TpWinDropdown.Refresh then pcall(TpWinDropdown.Refresh, _tpWinList) end
+    if TpGateDropdown and TpGateDropdown.Refresh then pcall(TpGateDropdown.Refresh, _tpGateList) end
+    SafeNotify({ Title = "Teleport", Content = "Map objects refreshed.", Type = "success", Duration = 2 })
 end })
 
 local TeleportPlayers = TabTeleport:CreateSection({ Title = "Players" })
@@ -3048,13 +3074,13 @@ local TpPlrDropdown = TeleportPlayers:CreateDropdown({
 })
 TeleportPlayers:CreateButton({ Id = "BtnTpPlr", Title = "Teleport to Player", Callback = function()
     if not _selPlr then
-        Window:Notify({ Title = "Teleport", Content = "No player selected.", Type = "warning", Duration = 3 })
+        SafeNotify({ Title = "Teleport", Content = "No player selected.", Type = "warning", Duration = 3 })
         return
     end
     local tChar = _selPlr.Character
     local tHRP  = tChar and tChar:FindFirstChild("HumanoidRootPart")
     if not tHRP then
-        Window:Notify({ Title = "Teleport", Content = "Player has no active character.", Type = "warning", Duration = 3 })
+        SafeNotify({ Title = "Teleport", Content = "Player has no active character.", Type = "warning", Duration = 3 })
         return
     end
     local char = getChar(); if not char then return end
@@ -3143,7 +3169,7 @@ PlayerMovementSection:CreateToggle({ Id = "Fly", Title = "Fly", Default = false,
             bg.CFrame = cam.CFrame
         end)
 
-        Window:Notify({ Title = "Fly Enabled", Content = "Space=up  X/LCtrl/LShift=down  WASD=move", Type = "success", Duration = 3 })
+        SafeNotify({ Title = "Fly Enabled", Content = "Space=up  X/LCtrl/LShift=down  WASD=move", Type = "success", Duration = 3 })
     else
         NMHUB:Disconnect("FlyHeartbeat")
 
@@ -3162,7 +3188,7 @@ PlayerMovementSection:CreateToggle({ Id = "Fly", Title = "Fly", Default = false,
             if hm then hm.PlatformStand = false end
         end)
 
-        Window:Notify({ Title = "Fly Disabled", Content = "Flight mode stopped.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Fly Disabled", Content = "Flight mode stopped.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3184,7 +3210,7 @@ PlayerMovementSection:CreateToggle({ Id = "Noclip", Title = "Noclip", Default = 
                 end
             end
         end)
-        Window:Notify({ Title = "Noclip Enabled", Content = "You can now walk through walls!", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Noclip Enabled", Content = "You can now walk through walls!", Type = "info", Duration = 2 })
     else
         NMHUB:Disconnect("NoclipStepped")
         local char = LP.Character
@@ -3200,7 +3226,7 @@ PlayerMovementSection:CreateToggle({ Id = "Noclip", Title = "Noclip", Default = 
                 end
             end
         end
-        Window:Notify({ Title = "Noclip Disabled", Content = "Collision restored.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Noclip Disabled", Content = "Collision restored.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3217,13 +3243,13 @@ PlayerMovementSection:CreateToggle({ Id = "InfiniteJump", Title = "Infinite Jump
                 char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
         end)
-        Window:Notify({ Title = "Infinite Jump Enabled", Content = "You can jump infinitely!", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Infinite Jump Enabled", Content = "You can jump infinitely!", Type = "info", Duration = 2 })
     else
         if NMHUB.Connections.InfiniteJump then
             NMHUB.Connections.InfiniteJump:Disconnect()
             NMHUB.Connections.InfiniteJump = nil
         end
-        Window:Notify({ Title = "Infinite Jump Disabled", Content = "Jump returned to normal.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Infinite Jump Disabled", Content = "Jump returned to normal.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3240,13 +3266,13 @@ UtilitiesSection:CreateToggle({ Id = "AntiAFK", Title = "Anti-AFK", Default = fa
             VirtualUser:CaptureController()
             VirtualUser:ClickButton2(Vector2.new())
         end)
-        Window:Notify({ Title = "Anti-AFK Enabled", Content = "You won't be kicked for inactivity!", Type = "success", Duration = 2 })
+        SafeNotify({ Title = "Anti-AFK Enabled", Content = "You won't be kicked for inactivity!", Type = "success", Duration = 2 })
     else
         if NMHUB.Connections.AntiAFK then
             NMHUB.Connections.AntiAFK:Disconnect()
             NMHUB.Connections.AntiAFK = nil
         end
-        Window:Notify({ Title = "Anti-AFK Disabled", Content = "AFK detection re-enabled.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Anti-AFK Disabled", Content = "AFK detection re-enabled.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3263,13 +3289,13 @@ UtilitiesSection:CreateToggle({ Id = "AutoReconnect", Title = "Auto-Reconnect", 
                 pcall(function() TeleportService:Teleport(game.PlaceId, LP) end)
             end
         end)
-        Window:Notify({ Title = "Auto-Reconnect Enabled", Content = "Will auto-rejoin on disconnect!", Type = "success", Duration = 2 })
+        SafeNotify({ Title = "Auto-Reconnect Enabled", Content = "Will auto-rejoin on disconnect!", Type = "success", Duration = 2 })
     else
         if NMHUB.Connections.AutoReconnect then
             NMHUB.Connections.AutoReconnect:Disconnect()
             NMHUB.Connections.AutoReconnect = nil
         end
-        Window:Notify({ Title = "Auto-Reconnect Disabled", Content = "Auto-rejoin disabled.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Auto-Reconnect Disabled", Content = "Auto-rejoin disabled.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3301,7 +3327,7 @@ PerformanceSection:CreateToggle({ Id = "FPSBoost", Title = "FPS Boost", Default 
         Terrain.WaterWaveSpeed = 0
         Terrain.WaterReflectance = 0
         Terrain.WaterTransparency = 0
-        Window:Notify({ Title = "FPS Boost Enabled", Content = "Graphics optimized for better performance!", Type = "success", Duration = 3 })
+        SafeNotify({ Title = "FPS Boost Enabled", Content = "Graphics optimized for better performance!", Type = "success", Duration = 3 })
     else
         local Lighting = game:GetService("Lighting")
         local Terrain = workspace.Terrain
@@ -3321,7 +3347,7 @@ PerformanceSection:CreateToggle({ Id = "FPSBoost", Title = "FPS Boost", Default 
             Terrain.WaterReflectance = 1
             Terrain.WaterTransparency = 1
         end
-        Window:Notify({ Title = "FPS Boost Disabled", Content = "Graphics restored to default.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "FPS Boost Disabled", Content = "Graphics restored to default.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3342,7 +3368,7 @@ PerformanceSection:CreateToggle({ Id = "RemoveTextures", Title = "Remove Texture
                 obj.Enabled = false
             end
         end
-        Window:Notify({ Title = "Textures Removed", Content = "All textures and particles disabled!", Type = "success", Duration = 2 })
+        SafeNotify({ Title = "Textures Removed", Content = "All textures and particles disabled!", Type = "success", Duration = 2 })
     else
         for _, obj in pairs(workspace:GetDescendants()) do
             if obj:IsA("Decal") or obj:IsA("Texture") then
@@ -3361,7 +3387,7 @@ PerformanceSection:CreateToggle({ Id = "RemoveTextures", Title = "Remove Texture
                 end
             end
         end
-        Window:Notify({ Title = "Textures Restored", Content = "Visual effects re-enabled.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "Textures Restored", Content = "Visual effects re-enabled.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3417,14 +3443,14 @@ PerformanceSection:CreateToggle({ Id = "PerformanceMonitor", Title = "Performanc
                 lastTime = currentTime
             end
         end)
-        Window:Notify({ Title = "FPS Monitor Enabled", Content = "FPS counter displayed on screen!", Type = "success", Duration = 2 })
+        SafeNotify({ Title = "FPS Monitor Enabled", Content = "FPS counter displayed on screen!", Type = "success", Duration = 2 })
     else
         if NMHUB.GuiElements.FPSCounter then
             NMHUB.GuiElements.FPSCounter:Destroy()
             NMHUB.GuiElements.FPSCounter = nil
         end
         NMHUB:Disconnect("FPSHeartbeat")
-        Window:Notify({ Title = "FPS Monitor Disabled", Content = "FPS counter removed.", Type = "info", Duration = 2 })
+        SafeNotify({ Title = "FPS Monitor Disabled", Content = "FPS counter removed.", Type = "info", Duration = 2 })
     end
     autoSaveConfig()
 end })
@@ -3432,7 +3458,7 @@ end })
 local SettingsSection = TabSettings:CreateSection({ Title = "Script Management" })
 
 SettingsSection:CreateButton({ Id = "BtnDestroy", Title = "Destroy Script", Callback = function()
-    Window:Dialog({
+    SafeDialog({
         Title = "Konfirmasi Destroy",
         Content = "Yakin ingin destroy script?\nSemua fitur akan berhenti.",
         Buttons = {
@@ -3443,7 +3469,7 @@ SettingsSection:CreateButton({ Id = "BtnDestroy", Title = "Destroy Script", Call
                 end
             end },
             { Id = "BtnDestroyNo", Title = "Batal", Callback = function()
-                Window:Notify({ Title = "Dibatalkan", Content = "Script tetap berjalan.", Type = "info", Duration = 2 })
+                SafeNotify({ Title = "Dibatalkan", Content = "Script tetap berjalan.", Type = "info", Duration = 2 })
             end }
         }
     })
@@ -3504,7 +3530,7 @@ end
 
 local function saveConfig(configName)
     if not writefile or not HttpService then
-        Window:Notify({ Title = "Config Error", Content = "Executor missing writefile function!", Type = "error", Duration = 3 })
+        SafeNotify({ Title = "Config Error", Content = "Executor missing writefile function!", Type = "error", Duration = 3 })
         return false
     end
     local config = {
@@ -3568,22 +3594,22 @@ local function saveConfig(configName)
         writefile(ConfigFolder .. "/" .. configName .. ".json", HttpService:JSONEncode(config))
     end)
     if success then
-        Window:Notify({ Title = "Config Saved", Content = "Config '" .. configName .. "' saved successfully!", Type = "success", Duration = 3 })
+        SafeNotify({ Title = "Config Saved", Content = "Config '" .. configName .. "' saved successfully!", Type = "success", Duration = 3 })
         return true
     else
-        Window:Notify({ Title = "Save Failed", Content = tostring(err), Type = "error", Duration = 3 })
+        SafeNotify({ Title = "Save Failed", Content = tostring(err), Type = "error", Duration = 3 })
         return false
     end
 end
 
 local function loadConfig(configName)
     if not readfile or not isfile or not HttpService then
-        Window:Notify({ Title = "Config Error", Content = "Executor missing readfile function!", Type = "error", Duration = 3 })
+        SafeNotify({ Title = "Config Error", Content = "Executor missing readfile function!", Type = "error", Duration = 3 })
         return false
     end
     local filePath = ConfigFolder .. "/" .. configName .. ".json"
     if not isfile(filePath) then
-        Window:Notify({ Title = "Load Failed", Content = "Config '" .. configName .. "' not found!", Type = "error", Duration = 3 })
+        SafeNotify({ Title = "Load Failed", Content = "Config '" .. configName .. "' not found!", Type = "error", Duration = 3 })
         return false
     end
     local success, result = pcall(function() return HttpService:JSONDecode(readfile(filePath)) end)
@@ -3644,10 +3670,10 @@ local function loadConfig(configName)
         NMHUB.Flags.RemoveTextures         = result.RemoveTextures or false
         NMHUB.Flags.PerformanceMonitor     = result.PerformanceMonitor or false
         syncFeatureBackends()
-        Window:Notify({ Title = "Config Loaded", Content = "Config '" .. configName .. "' loaded successfully!", Type = "success", Duration = 3 })
+        SafeNotify({ Title = "Config Loaded", Content = "Config '" .. configName .. "' loaded successfully!", Type = "success", Duration = 3 })
         return true
     else
-        Window:Notify({ Title = "Load Failed", Content = "Failed to parse config file!", Type = "error", Duration = 3 })
+        SafeNotify({ Title = "Load Failed", Content = "Failed to parse config file!", Type = "error", Duration = 3 })
         return false
     end
 end
@@ -3690,18 +3716,18 @@ local ConfigDropdown = ConfigSection:CreateDropdown({
 ConfigSection:CreateButton({ Id = "BtnCreateCfg", Title = "Create Config", Callback = function()
     local name = NMHUB.Flags.ConfigName
     if not name or name == "" then
-        Window:Notify({ Title = "Error", Content = "Please enter a config name!", Type = "error", Duration = 2 })
+        SafeNotify({ Title = "Error", Content = "Please enter a config name!", Type = "error", Duration = 2 })
         return
     end
     if saveConfig(name) then
-        ConfigDropdown:Refresh(getConfigList())
+        if ConfigDropdown and ConfigDropdown.Refresh then ConfigDropdown:Refresh(getConfigList()) end
     end
 end })
 
 ConfigSection:CreateButton({ Id = "BtnLoadCfg", Title = "Load Config", Callback = function()
     local name = NMHUB.Flags.SelectedConfig
     if not name or name == "" then
-        Window:Notify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
+        SafeNotify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
         return
     end
     loadConfig(name)
@@ -3710,18 +3736,18 @@ end })
 ConfigSection:CreateButton({ Id = "BtnDeleteCfg", Title = "Delete Config", Callback = function()
     local name = NMHUB.Flags.SelectedConfig
     if not name or name == "" then
-        Window:Notify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
+        SafeNotify({ Title = "Error", Content = "Please select a config!", Type = "error", Duration = 2 })
         return
     end
-    Window:Dialog({
+    SafeDialog({
         Title = "Confirm Delete",
         Content = "Delete config '" .. name .. "'?",
         Buttons = {
             { Id = "BtnDeleteYes", Title = "Yes, Delete", Callback = function()
                 if delfile then
                     pcall(delfile, ConfigFolder .. "/" .. name .. ".json")
-                    ConfigDropdown:Refresh(getConfigList())
-                    Window:Notify({ Title = "Deleted", Content = "Config deleted!", Type = "success", Duration = 2 })
+                    if ConfigDropdown and ConfigDropdown.Refresh then ConfigDropdown:Refresh(getConfigList()) end
+                    SafeNotify({ Title = "Deleted", Content = "Config deleted!", Type = "success", Duration = 2 })
                 end
             end },
             { Id = "BtnDeleteNo", Title = "Cancel" },
@@ -3739,7 +3765,7 @@ end })
 AutoLoadSection:CreateToggle({ Id = "AutoSaveEnabled", Title = "Enable Auto Save", Default = false, Callback = function(Value)
     NMHUB.Flags.AutoSaveEnabled = Value
     if Value then
-        Window:Notify({ Title = "Auto Save Enabled", Content = "Settings will be saved automatically!", Type = "success", Duration = 2 })
+        SafeNotify({ Title = "Auto Save Enabled", Content = "Settings will be saved automatically!", Type = "success", Duration = 2 })
     end
 end })
 
@@ -3814,16 +3840,16 @@ end
 AutoLoadSection:CreateButton({ Id = "BtnSetAuto", Title = "Set as Auto Load", Callback = function()
     local name = NMHUB.Flags.SelectedConfig
     if not name or name == "" then
-        Window:Notify({ Title = "Error", Content = "Please select a config first!", Type = "error", Duration = 2 })
+        SafeNotify({ Title = "Error", Content = "Please select a config first!", Type = "error", Duration = 2 })
         return
     end
     saveAutoLoad(name)
-    Window:Notify({ Title = "Auto Load Set", Content = "Config '" .. name .. "' will load on startup!", Type = "success", Duration = 3 })
+    SafeNotify({ Title = "Auto Load Set", Content = "Config '" .. name .. "' will load on startup!", Type = "success", Duration = 3 })
 end })
 
 AutoLoadSection:CreateButton({ Id = "BtnClearAuto", Title = "Clear Auto Load", Callback = function()
     clearAutoLoad()
-    Window:Notify({ Title = "Auto Load Cleared", Content = "No config will auto-load on startup.", Type = "info", Duration = 2 })
+    SafeNotify({ Title = "Auto Load Cleared", Content = "No config will auto-load on startup.", Type = "info", Duration = 2 })
 end })
 
 NMHUB.Loops.AutoLoadTask = task.spawn(function()
@@ -4171,12 +4197,12 @@ task.spawn(function()
 end)
 
 -- ===== ENABLE CONFIG & FINAL NOTIFICATION =====
-Vypers:EnableConfig("default")
+pcall(function() if Vypers.EnableConfig then Vypers:EnableConfig("default") end end)
 
 NMHUB.Loops.FinalNotificationTask = task.spawn(function()
     task.wait(1)
     if _G.NOMERCY_Shutdown then return end
-    Window:Notify({
+    SafeNotify({
         Title = "King Vypers",
         Content = "Violence District v" .. VERSION .. " loaded successfully!",
         Type = "success",
