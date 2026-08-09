@@ -414,7 +414,6 @@ function MonoUI:CreateWindow(title, subtitle)
 			for _, t in pairs(Window.Tabs) do
 				t.Page.Visible = false
 				tween(t.Button, TweenInfo.new(0.15), { BackgroundTransparency = 1 })
-				local txt = t.Button:FindFirstChildOfClass("TextLabel")
 			end
 			Page.Visible = true
 			tween(TabButton, TweenInfo.new(0.15), { BackgroundTransparency = 0.85 })
@@ -758,7 +757,7 @@ function MonoUI:CreateWindow(title, subtitle)
 			local HexBox = Instance.new("TextBox")
 			HexBox.Size = UDim2.new(0, 0, 0, 0)
 			HexBox.Visible = false
-			HexBox.Parent = Holder -- hex input hidden helper (opsional pemakaian lanjutan)
+			HexBox.Parent = Holder
 
 			local ClickCatcher = Instance.new("TextButton")
 			ClickCatcher.Size = UDim2.new(0, 44, 0, 24)
@@ -767,7 +766,6 @@ function MonoUI:CreateWindow(title, subtitle)
 			ClickCatcher.Text = ""
 			ClickCatcher.Parent = Holder
 
-			-- Palet warna cepat hitam-putih-abu (grayscale picker)
 			local palette = {
 				Color3.fromRGB(255,255,255), Color3.fromRGB(210,210,210),
 				Color3.fromRGB(150,150,150), Color3.fromRGB(90,90,90),
