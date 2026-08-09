@@ -1,45 +1,17 @@
 --[[
 ╔═══════════════════════════════════════════════════════════════════════╗
 ║                    ⚫⚪ MONO UI - FULL VERSION                        ║
-║        UI Library Hitam Putih — Responsive Mobile & PC              ║
-║        Tombol toggle buka/tutup ada di POJOK KIRI ATAS               ║
+║           UI Library Hitam Putih — Responsive Mobile & PC             ║
+║                  Created & Maintained by Akbar                        ║
 ╚═══════════════════════════════════════════════════════════════════════╝
-
-CARA PAKAI:
-local MonoUI = loadstring(game:HttpGet("URL_RAW_KAMU"))()
-
-local Window = MonoUI:CreateWindow("Judul Script", "Subjudul")
-local Tab = Window:CreateTab("Main", "🏠")
-
-Tab:CreateButton("Klik Aku", function() print("diklik!") end)
-Tab:CreateToggle("Auto Farm", false, function(v) print(v) end)
-Tab:CreateSlider("Speed", 16, 100, 16, function(v) print(v) end)
-Tab:CreateDropdown("Mode", {"Easy","Hard"}, function(v) print(v) end)
-Tab:CreateTextbox("Masukkan nama...", function(text) print(text) end)
-Tab:CreateColorpicker("Warna", Color3.fromRGB(255,255,255), function(c) print(c) end)
-Tab:CreateKeybind("Toggle UI", Enum.KeyCode.RightShift, function() end)
-
-Window:Notify("Sukses", "Script berhasil dimuat!", 3)
 ]]
 
 local UserInputService = game:GetService("UserInputService")
-local TweenService = game:GetService("TweenService")
-local Players = game:GetService("Players")
-local GuiService = game:GetService("GuiService")
-local LocalPlayer = Players.LocalPlayer
+local TweenService     = game:GetService("TweenService")
+local Players          = game:GetService("Players")
+local LocalPlayer      = Players.LocalPlayer
 
--- ============ DETEKSI PLATFORM (Mobile / PC) ============
-local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
-local viewportSize = workspace.CurrentCamera.ViewportSize
-local isSmallScreen = viewportSize.X < 700
-
--- Ukuran window menyesuaikan device
-local WINDOW_W = (isMobile or isSmallScreen) and math.min(viewportSize.X * 0.92, 420) or 520
-local WINDOW_H = (isMobile or isSmallScreen) and math.min(viewportSize.Y * 0.62, 360) or 360
-local SIDEBAR_W = (isMobile or isSmallScreen) and 100 or 140
-local TOGGLE_ICON_ID = "rbxassetid://132783843721344"
-
--- ============ PALET WARNA HITAM PUTIH ============
+-- ============ PALET WARNA ============
 local Colors = {
 	White       = Color3.fromRGB(255, 255, 255),
 	OffWhite    = Color3.fromRGB(240, 240, 240),
@@ -48,14 +20,11 @@ local Colors = {
 	DarkGray    = Color3.fromRGB(60, 60, 60),
 	Black       = Color3.fromRGB(18, 18, 18),
 	Charcoal    = Color3.fromRGB(28, 28, 28),
-	Success     = Color3.fromRGB(220, 220, 220),
-	Error       = Color3.fromRGB(235, 90, 90),
 	TextMain    = Color3.fromRGB(255, 255, 255),
 	TextSub     = Color3.fromRGB(170, 170, 170),
-	TextDark    = Color3.fromRGB(20, 20, 20),
 }
 
--- ============ UTILITAS ============
+-- ============ HELPER FUNCTIONS ============
 local function tween(obj, info, props)
 	local t = TweenService:Create(obj, info, props)
 	t:Play()
@@ -103,15 +72,29 @@ local function makeDraggable(dragHandle, frame)
 	end)
 end
 
--- ============ LIBRARY UTAMA ============
+-- ============ MODULE MONO UI ============
 local MonoUI = {}
 MonoUI.__index = MonoUI
 
 function MonoUI:CreateWindow(title, subtitle)
 	title = title or "Mono UI"
-	subtitle = subtitle or "Full Feature • Black & White"
+	subtitle = subtitle or "Black & White Edition"
 
-	local old = LocalPlayer.PlayerGui:FindFirstChild("MonoUI_ScreenGui")
+	-- Deteksi Ukuran Layar Dinamis
+	local camera = workspace.CurrentCamera
+	local viewportSize = (camera and camera.ViewportSize.X > 0) and camera.ViewportSize or Vector2.new(1280, 720)
+	local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+	local isSmallScreen = viewportSize.X < 700
+
+	local WINDOW_W = (isMobile or isSmallScreen) and math.min(viewportSize.X * 0.92, 420) or 520
+	local WINDOW_H = (isMobile or isSmallScreen) and math.min(viewportSize.Y * 0.62, 360) or 360
+	local SIDEBAR_W = (isMobile or isSmallScreen) and 100 or 140
+	local TOGGLE_ICON_ID = "rbxassetid://132783843721344"
+
+	-- Parent Aman untuk Executor
+	local parentGui = (gethui and gethui()) or game:GetService("CoreGui") or LocalPlayer:WaitForChild("PlayerGui")
+
+	local old = parentGui:FindFirstChild("MonoUI_ScreenGui")
 	if old then old:Destroy() end
 
 	local ScreenGui = Instance.new("ScreenGui")
@@ -119,9 +102,9 @@ function MonoUI:CreateWindow(title, subtitle)
 	ScreenGui.ResetOnSpawn = false
 	ScreenGui.IgnoreGuiInset = true
 	ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-	ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+	ScreenGui.Parent = parentGui
 
-	-- ===== TOMBOL TOGGLE (POJOK KIRI ATAS) =====
+	-- Tombol Toggle Buka/Tutup (Pojok Kiri Atas)
 	local ToggleBtn = Instance.new("ImageButton")
 	ToggleBtn.Name = "ToggleButton"
 	ToggleBtn.Size = UDim2.new(0, 46, 0, 46)
@@ -143,7 +126,7 @@ function MonoUI:CreateWindow(title, subtitle)
 	ImgPad.PaddingRight = UDim.new(0, 8)
 	ImgPad.Parent = ToggleBtn
 
-	-- Shadow belakang window
+	-- Frame Bayangan (Shadow)
 	local Shadow = Instance.new("Frame")
 	Shadow.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
 	Shadow.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
@@ -153,7 +136,7 @@ function MonoUI:CreateWindow(title, subtitle)
 	Shadow.Parent = ScreenGui
 	corner(Shadow, 16)
 
-	-- Window utama
+	-- Window Utama
 	local Main = Instance.new("Frame")
 	Main.Name = "Main"
 	Main.Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H)
@@ -162,12 +145,10 @@ function MonoUI:CreateWindow(title, subtitle)
 	Main.BorderSizePixel = 0
 	Main.ZIndex = 10
 	Main.ClipsDescendants = true
-	Main.Visible = true
 	Main.Parent = ScreenGui
 	corner(Main, 16)
 	stroke(Main, Colors.White, 1.5)
 
-	-- Sinkron shadow ke posisi Main
 	local function syncShadow()
 		Shadow.Position = Main.Position + UDim2.new(0, 3, 0, 5)
 		Shadow.Size = Main.Size
@@ -176,7 +157,7 @@ function MonoUI:CreateWindow(title, subtitle)
 	Main:GetPropertyChangedSignal("Position"):Connect(syncShadow)
 	Main:GetPropertyChangedSignal("Size"):Connect(syncShadow)
 
-	-- Title bar
+	-- Title Bar
 	local TitleBar = Instance.new("Frame")
 	TitleBar.Name = "TitleBar"
 	TitleBar.Size = UDim2.new(1, 0, 0, 52)
@@ -229,7 +210,6 @@ function MonoUI:CreateWindow(title, subtitle)
 	SubLabel.ZIndex = 12
 	SubLabel.Parent = TitleBar
 
-	-- Tombol close (di window, bukan toggle utama)
 	local CloseBtn = Instance.new("TextButton")
 	CloseBtn.Size = UDim2.new(0, 30, 0, 30)
 	CloseBtn.Position = UDim2.new(1, -40, 0, 11)
@@ -263,6 +243,7 @@ function MonoUI:CreateWindow(title, subtitle)
 
 	makeDraggable(TitleBar, Main)
 
+	-- Animasi Buka/Tutup Window
 	local windowVisible = true
 	local function playOpen()
 		Main.Visible = true
@@ -275,7 +256,7 @@ function MonoUI:CreateWindow(title, subtitle)
 		})
 	end
 
-	local function playClose(destroyAfter)
+	local function playClose()
 		local t = tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {
 			Size = UDim2.new(0, 0, 0, 0),
 			Position = UDim2.new(0.5, 0, 0.5, 0),
@@ -283,7 +264,6 @@ function MonoUI:CreateWindow(title, subtitle)
 		t.Completed:Connect(function()
 			Main.Visible = false
 			Shadow.Visible = false
-			if destroyAfter then ScreenGui:Destroy() end
 		end)
 	end
 
@@ -291,20 +271,16 @@ function MonoUI:CreateWindow(title, subtitle)
 
 	ToggleBtn.MouseButton1Click:Connect(function()
 		windowVisible = not windowVisible
-		if windowVisible then
-			playOpen()
-		else
-			playClose(false)
-		end
+		if windowVisible then playOpen() else playClose() end
 		tween(ToggleBtn, TweenInfo.new(0.15), { ImageColor3 = windowVisible and Colors.White or Colors.MidGray })
 	end)
 
 	CloseBtn.MouseButton1Click:Connect(function()
 		windowVisible = false
-		playClose(false)
+		playClose()
 	end)
 
-	-- Sidebar
+	-- Container Tab & Content
 	local Sidebar = Instance.new("Frame")
 	Sidebar.Name = "Sidebar"
 	Sidebar.Size = UDim2.new(0, SIDEBAR_W, 1, -52)
@@ -339,13 +315,9 @@ function MonoUI:CreateWindow(title, subtitle)
 		if isMinimized then
 			Sidebar.Visible = false
 			ContentArea.Visible = false
-			tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, WINDOW_W, 0, 52),
-			})
+			tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, WINDOW_W, 0, 52) })
 		else
-			tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-				Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H),
-			})
+			tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(0, WINDOW_W, 0, WINDOW_H) })
 			task.wait(0.22)
 			Sidebar.Visible = true
 			ContentArea.Visible = true
@@ -356,7 +328,9 @@ function MonoUI:CreateWindow(title, subtitle)
 	Window.Tabs = {}
 	Window.ScreenGui = ScreenGui
 
+	-- ============ TAB CREATION ============
 	function Window:CreateTab(tabName, icon)
+		tabName = tabName or "Tab"
 		icon = icon or "•"
 
 		local TabButton = Instance.new("TextButton")
@@ -420,65 +394,58 @@ function MonoUI:CreateWindow(title, subtitle)
 		end
 
 		TabButton.MouseButton1Click:Connect(selectTab)
-		TabButton.MouseEnter:Connect(function()
-			if Page.Visible then return end
-			tween(TabButton, TweenInfo.new(0.15), { BackgroundTransparency = 0.92 })
-		end)
-		TabButton.MouseLeave:Connect(function()
-			if Page.Visible then return end
-			tween(TabButton, TweenInfo.new(0.15), { BackgroundTransparency = 1 })
-		end)
-
 		table.insert(Window.Tabs, Tab)
 		if #Window.Tabs == 1 then selectTab() end
 
 		local elementH = (isMobile or isSmallScreen) and 40 or 38
 
+		-- ---------- COMPONENT: LABEL ----------
 		function Tab:CreateLabel(text)
 			local Label = Instance.new("TextLabel")
 			Label.Size = UDim2.new(1, 0, 0, 22)
 			Label.BackgroundTransparency = 1
-			Label.Text = text
+			Label.Text = text or "Label"
 			Label.Font = Enum.Font.GothamBold
-			Label.TextSize = 14
+			Label.TextSize = 13
 			Label.TextColor3 = Colors.TextMain
 			Label.TextXAlignment = Enum.TextXAlignment.Left
 			Label.Parent = Page
 			return Label
 		end
 
+		-- ---------- COMPONENT: BUTTON ----------
 		function Tab:CreateButton(text, callback)
+			text = text or "Button"
 			callback = callback or function() end
+
 			local Btn = Instance.new("TextButton")
 			Btn.Size = UDim2.new(1, 0, 0, elementH)
 			Btn.BackgroundColor3 = Colors.White
 			Btn.Text = text
 			Btn.Font = Enum.Font.GothamMedium
-			Btn.TextSize = 14
+			Btn.TextSize = 13
 			Btn.TextColor3 = Colors.Black
 			Btn.AutoButtonColor = false
 			Btn.BorderSizePixel = 0
 			Btn.Parent = Page
 			corner(Btn, 10)
 
-			Btn.MouseEnter:Connect(function()
-				tween(Btn, TweenInfo.new(0.15), { BackgroundColor3 = Colors.LightGray })
-			end)
-			Btn.MouseLeave:Connect(function()
-				tween(Btn, TweenInfo.new(0.15), { BackgroundColor3 = Colors.White })
-			end)
+			Btn.MouseEnter:Connect(function() tween(Btn, TweenInfo.new(0.15), { BackgroundColor3 = Colors.LightGray }) end)
+			Btn.MouseLeave:Connect(function() tween(Btn, TweenInfo.new(0.15), { BackgroundColor3 = Colors.White }) end)
 			Btn.MouseButton1Click:Connect(function()
 				tween(Btn, TweenInfo.new(0.08), { Size = UDim2.new(1, -6, 0, elementH - 4) }).Completed:Connect(function()
 					tween(Btn, TweenInfo.new(0.08), { Size = UDim2.new(1, 0, 0, elementH) })
 				end)
-				callback()
+				task.spawn(callback)
 			end)
 			return Btn
 		end
 
+		-- ---------- COMPONENT: TOGGLE ----------
 		function Tab:CreateToggle(text, default, callback)
-			callback = callback or function() end
+			text = text or "Toggle"
 			local state = default or false
+			callback = callback or function() end
 
 			local Holder = Instance.new("Frame")
 			Holder.Size = UDim2.new(1, 0, 0, elementH)
@@ -528,15 +495,17 @@ function MonoUI:CreateWindow(title, subtitle)
 					Position = state and UDim2.new(1, -20, 0.5, -9) or UDim2.new(0, 2, 0.5, -9),
 					BackgroundColor3 = state and Colors.Black or Colors.White,
 				})
-				callback(state)
+				task.spawn(callback, state)
 			end)
 
 			return Holder
 		end
 
+		-- ---------- COMPONENT: SLIDER ----------
 		function Tab:CreateSlider(text, min, max, default, callback)
+			text = text or "Slider"
 			min, max = min or 0, max or 100
-			default = default or min
+			default = math.clamp(default or min, min, max)
 			callback = callback or function() end
 
 			local Holder = Instance.new("Frame")
@@ -591,7 +560,7 @@ function MonoUI:CreateWindow(title, subtitle)
 				Fill.Size = UDim2.new(relative, 0, 1, 0)
 				Knob.Position = UDim2.new(relative, -8, 0.5, -8)
 				Label.Text = text .. ": " .. tostring(value)
-				callback(value)
+				task.spawn(callback, value)
 			end
 
 			Knob.InputBegan:Connect(function(input)
@@ -619,7 +588,9 @@ function MonoUI:CreateWindow(title, subtitle)
 			return Holder
 		end
 
+		-- ---------- COMPONENT: DROPDOWN ----------
 		function Tab:CreateDropdown(text, options, callback)
+			text = text or "Dropdown"
 			options = options or {}
 			callback = callback or function() end
 
@@ -659,7 +630,7 @@ function MonoUI:CreateWindow(title, subtitle)
 				local OptBtn = Instance.new("TextButton")
 				OptBtn.Size = UDim2.new(1, 0, 0, 30)
 				OptBtn.BackgroundTransparency = 1
-				OptBtn.Text = "     " .. opt
+				OptBtn.Text = "     " .. tostring(opt)
 				OptBtn.Font = Enum.Font.Gotham
 				OptBtn.TextSize = 12
 				OptBtn.TextColor3 = Colors.TextMain
@@ -667,18 +638,11 @@ function MonoUI:CreateWindow(title, subtitle)
 				OptBtn.ZIndex = 5
 				OptBtn.Parent = ListFrame
 
-				OptBtn.MouseEnter:Connect(function()
-					tween(OptBtn, TweenInfo.new(0.1), { BackgroundTransparency = 0.85, BackgroundColor3 = Colors.White })
-				end)
-				OptBtn.MouseLeave:Connect(function()
-					tween(OptBtn, TweenInfo.new(0.1), { BackgroundTransparency = 1 })
-				end)
-
 				OptBtn.MouseButton1Click:Connect(function()
-					Selected.Text = "  " .. text .. ": " .. opt .. "  ▾"
+					Selected.Text = "  " .. text .. ": " .. tostring(opt) .. "  ▾"
 					open = false
 					tween(Holder, TweenInfo.new(0.2), { Size = UDim2.new(1, 0, 0, elementH) })
-					callback(opt)
+					task.spawn(callback, opt)
 				end)
 			end
 
@@ -691,7 +655,9 @@ function MonoUI:CreateWindow(title, subtitle)
 			return Holder
 		end
 
+		-- ---------- COMPONENT: TEXTBOX ----------
 		function Tab:CreateTextbox(placeholder, callback)
+			placeholder = placeholder or "Ketik sesuatu..."
 			callback = callback or function() end
 
 			local Holder = Instance.new("Frame")
@@ -706,7 +672,7 @@ function MonoUI:CreateWindow(title, subtitle)
 			Input.Size = UDim2.new(1, -20, 1, 0)
 			Input.Position = UDim2.new(0, 10, 0, 0)
 			Input.BackgroundTransparency = 1
-			Input.PlaceholderText = placeholder or "Ketik sesuatu..."
+			Input.PlaceholderText = placeholder
 			Input.Text = ""
 			Input.Font = Enum.Font.Gotham
 			Input.TextSize = 13
@@ -716,13 +682,15 @@ function MonoUI:CreateWindow(title, subtitle)
 			Input.Parent = Holder
 
 			Input.FocusLost:Connect(function(enterPressed)
-				callback(Input.Text, enterPressed)
+				task.spawn(callback, Input.Text, enterPressed)
 			end)
 
 			return Holder
 		end
 
+		-- ---------- COMPONENT: COLORPICKER ----------
 		function Tab:CreateColorpicker(text, default, callback)
+			text = text or "Warna"
 			default = default or Color3.fromRGB(255, 255, 255)
 			callback = callback or function() end
 
@@ -730,6 +698,7 @@ function MonoUI:CreateWindow(title, subtitle)
 			Holder.Size = UDim2.new(1, 0, 0, elementH)
 			Holder.BackgroundColor3 = Colors.Black
 			Holder.BorderSizePixel = 0
+			Holder.ClipsDescendants = true
 			Holder.Parent = Page
 			corner(Holder, 10)
 			stroke(Holder, Colors.DarkGray, 1)
@@ -753,11 +722,6 @@ function MonoUI:CreateWindow(title, subtitle)
 			Preview.Parent = Holder
 			corner(Preview, 6)
 			stroke(Preview, Colors.White, 1)
-
-			local HexBox = Instance.new("TextBox")
-			HexBox.Size = UDim2.new(0, 0, 0, 0)
-			HexBox.Visible = false
-			HexBox.Parent = Holder
 
 			local ClickCatcher = Instance.new("TextButton")
 			ClickCatcher.Size = UDim2.new(0, 44, 0, 24)
@@ -799,7 +763,7 @@ function MonoUI:CreateWindow(title, subtitle)
 
 				Swatch.MouseButton1Click:Connect(function()
 					Preview.BackgroundColor3 = col
-					callback(col)
+					task.spawn(callback, col)
 				end)
 			end
 
@@ -809,14 +773,14 @@ function MonoUI:CreateWindow(title, subtitle)
 				tween(Holder, TweenInfo.new(0.2), { Size = open and UDim2.new(1, 0, 0, elementH + 42) or UDim2.new(1, 0, 0, elementH) })
 			end)
 
-			Holder.ClipsDescendants = true
-
 			return Holder
 		end
 
+		-- ---------- COMPONENT: KEYBIND ----------
 		function Tab:CreateKeybind(text, defaultKey, callback)
-			callback = callback or function() end
+			text = text or "Keybind"
 			local currentKey = defaultKey or Enum.KeyCode.RightShift
+			callback = callback or function() end
 			local listening = false
 
 			local Holder = Instance.new("Frame")
@@ -861,7 +825,7 @@ function MonoUI:CreateWindow(title, subtitle)
 					KeyBtn.Text = currentKey.Name
 					listening = false
 				elseif not processed and input.KeyCode == currentKey then
-					callback()
+					task.spawn(callback)
 				end
 			end)
 
@@ -871,7 +835,10 @@ function MonoUI:CreateWindow(title, subtitle)
 		return Tab
 	end
 
+	-- ============ NOTIFICATION SYSTEM ============
 	function Window:Notify(title, text, duration)
+		title = title or "Notification"
+		text = text or ""
 		duration = duration or 3
 
 		local Notif = Instance.new("Frame")
