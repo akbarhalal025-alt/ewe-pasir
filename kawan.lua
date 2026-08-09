@@ -1,63 +1,90 @@
 -- ============================================
---  POLE X UI - Full Menu (Powered by Mono UI)
---  Loader: cukup jalankan script ini
---  Toggle "☰" otomatis muncul di pojok kiri atas
+--  POLE X - Full Menu (with toggle icon 132783843721344)
+--  Loader: jalankan script ini
+--  Pastikan kawan.lua sudah pakai ImageButton + ID di atas
 -- ============================================
 
--- Load library Mono UI dari kawan.lua
+-- Load library
 local MonoUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/akbarhalal025-alt/ewe-pasir/refs/heads/main/kawan.lua"))()
-
--- Buat window utama
 local Window = MonoUI:CreateWindow("Pole X", "Exclusive Edition")
+
+-- === FALLBACK TOGGLE: Jika gambar gagal muncul, ubah ke teks ☰ ===
+local toggle = Window.ScreenGui:FindFirstChild("ToggleButton")
+if toggle and toggle:IsA("ImageButton") then
+    -- Cek setelah 2 detik apakah gambar berhasil dimuat (ukurannya > 0)
+    spawn(function()
+        wait(2)
+        -- Kalau Image tidak beresolusi (mungkin tidak terload), ganti ke TextButton
+        if toggle.ContentImageSize == Vector2.new(0,0) then
+            -- Ubah ke TextButton
+            local textToggle = Instance.new("TextButton")
+            textToggle.Name = "ToggleButton"
+            textToggle.Size = UDim2.new(0, 46, 0, 46)
+            textToggle.Position = UDim2.new(0, 14, 0, 14)
+            textToggle.BackgroundColor3 = Color3.fromRGB(18,18,18)
+            textToggle.Text = "☰"
+            textToggle.Font = Enum.Font.GothamBold
+            textToggle.TextSize = 24
+            textToggle.TextColor3 = Color3.fromRGB(255,255,255)
+            textToggle.BorderSizePixel = 0
+            textToggle.ZIndex = 20
+            textToggle.AutoButtonColor = false
+            textToggle.Parent = Window.ScreenGui
+            -- Copy UICorner dan UIStroke jika ada
+            local corner = toggle:FindFirstChild("UICorner")
+            if corner then
+                local c = corner:Clone()
+                c.Parent = textToggle
+            end
+            local stroke = toggle:FindFirstChild("UIStroke")
+            if stroke then
+                local s = stroke:Clone()
+                s.Parent = textToggle
+            end
+            -- Pindahkan koneksi klik
+            local oldClick = toggle.MouseButton1Click
+            textToggle.MouseButton1Click:Connect(function()
+                oldClick:Fire()
+            end)
+            toggle:Destroy()
+            toggle = textToggle
+        end
+    end)
+end
 
 -- ============================================
 --  TAB: PLAYER
 -- ============================================
 local PlayerTab = Window:CreateTab("Player", "🏃")
 
--- WalkSpeed Slider
 PlayerTab:CreateSlider("WalkSpeed", 10, 200, 16, function(val)
-    local char = game.Players.LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.WalkSpeed = val
-    end
+    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then hum.WalkSpeed = val end
 end)
 
--- JumpPower Slider
 PlayerTab:CreateSlider("JumpPower", 30, 300, 50, function(val)
-    local char = game.Players.LocalPlayer.Character
-    if char and char:FindFirstChild("Humanoid") then
-        char.Humanoid.UseJumpPower = true
-        char.Humanoid.JumpPower = val
-    end
+    local hum = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if hum then hum.UseJumpPower = true; hum.JumpPower = val end
 end)
 
--- Infinite Jump Toggle
 PlayerTab:CreateToggle("Infinite Jump", false, function(state)
     if state then
-        local UserInputService = game:GetService("UserInputService")
-        local function onJump()
+        local uis = game:GetService("UserInputService")
+        uis.JumpRequest:Connect(function()
             local char = game.Players.LocalPlayer.Character
             if char and char:FindFirstChild("Humanoid") then
                 char.Humanoid:ChangeState(Enum.HumanoidStateType.Jumping)
             end
-        end
-        UserInputService.JumpRequest:Connect(onJump)
-        Window:Notify("Infinite Jump", "ON", 2)
-    else
-        Window:Notify("Infinite Jump", "OFF", 2)
+        end)
     end
 end)
 
--- Fly Toggle (WASD + Space/LCtrl)
 local flyEnabled = false
-local flyBody = nil
-
+local flyBody
 local function setFly(state)
     local char = game.Players.LocalPlayer.Character
     if not char or not char:FindFirstChild("HumanoidRootPart") then return end
     if state then
-        -- Buat BodyVelocity
         local bv = Instance.new("BodyVelocity")
         bv.Name = "FlyBody"
         bv.MaxForce = Vector3.new(400000, 400000, 400000)
@@ -65,8 +92,6 @@ local function setFly(state)
         bv.Parent = char.HumanoidRootPart
         flyBody = bv
         flyEnabled = true
-
-        -- Loop kontrol fly
         spawn(function()
             local uis = game:GetService("UserInputService")
             local cam = workspace.CurrentCamera
@@ -85,19 +110,13 @@ local function setFly(state)
         Window:Notify("Fly", "ON", 2)
     else
         flyEnabled = false
-        if char:FindFirstChild("FlyBody") then
-            char.FlyBody:Destroy()
-        end
+        if char:FindFirstChild("FlyBody") then char.FlyBody:Destroy() end
         Window:Notify("Fly", "OFF", 2)
     end
 end
 
 PlayerTab:CreateToggle("Fly", false, function(state) setFly(state) end)
-
--- Fly Keybind (default: F)
-PlayerTab:CreateKeybind("Fly Key", Enum.KeyCode.F, function()
-    setFly(not flyEnabled)
-end)
+PlayerTab:CreateKeybind("Fly Key", Enum.KeyCode.F, function() setFly(not flyEnabled) end)
 
 -- ============================================
 --  TAB: ESP
@@ -116,9 +135,9 @@ local function toggleESP(state)
                         if player.Character and not espCache[player] then
                             local h = Instance.new("Highlight")
                             h.Name = "ESP"
-                            h.FillColor = Color3.fromRGB(255, 255, 255)
+                            h.FillColor = Color3.fromRGB(255,255,255)
                             h.FillTransparency = 0.8
-                            h.OutlineColor = Color3.fromRGB(255, 255, 255)
+                            h.OutlineColor = Color3.fromRGB(255,255,255)
                             h.OutlineTransparency = 0.5
                             h.Parent = player.Character
                             espCache[player] = h
@@ -130,10 +149,7 @@ local function toggleESP(state)
                 end
                 wait(0.3)
             end
-            -- Bersihkan saat dimatikan
-            for _, h in pairs(espCache) do
-                h:Destroy()
-            end
+            for _, h in pairs(espCache) do h:Destroy() end
             espCache = {}
         end)
         Window:Notify("ESP", "ON", 2)
@@ -143,8 +159,7 @@ local function toggleESP(state)
 end
 
 ESPTab:CreateToggle("Box ESP", false, toggleESP)
-
-ESPTab:CreateColorpicker("ESP Color", Color3.fromRGB(255, 255, 255), function(color)
+ESPTab:CreateColorpicker("ESP Color", Color3.fromRGB(255,255,255), function(color)
     for _, h in pairs(espCache) do
         h.FillColor = color
         h.OutlineColor = color
@@ -162,11 +177,9 @@ local aimbotFOV = 150
 AimbotTab:CreateDropdown("Target Part", {"Head", "HumanoidRootPart", "Torso", "Right Arm"}, function(part)
     aimbotPart = part
 end)
-
 AimbotTab:CreateSlider("FOV", 30, 300, 150, function(val)
     aimbotFOV = val
 end)
-
 AimbotTab:CreateToggle("Enable Aimbot", false, function(state)
     aimbotEnabled = state
     if state then
@@ -176,7 +189,6 @@ AimbotTab:CreateToggle("Enable Aimbot", false, function(state)
                 local lp = game.Players.LocalPlayer
                 local char = lp.Character
                 if not char or not char:FindFirstChild(aimbotPart) then wait(); continue end
-                local myPart = char[aimbotPart]
                 local closest = nil
                 local closestDist = aimbotFOV
                 for _, player in ipairs(game.Players:GetPlayers()) do
@@ -203,7 +215,6 @@ AimbotTab:CreateToggle("Enable Aimbot", false, function(state)
         Window:Notify("Aimbot", "OFF", 2)
     end
 end)
-
 AimbotTab:CreateKeybind("Aimbot Key", Enum.KeyCode.E, function()
     aimbotEnabled = not aimbotEnabled
     Window:Notify("Aimbot", aimbotEnabled and "ON" or "OFF", 2)
@@ -224,7 +235,7 @@ MiscTab:CreateToggle("Anti AFK", false, function(state)
         end)
         Window:Notify("Anti AFK", "ON", 2)
     else
-        Window:Notify("Anti AFK", "OFF (restart script to fully disable)", 2)
+        Window:Notify("Anti AFK", "OFF", 2)
     end
 end)
 
@@ -249,8 +260,5 @@ MiscTab:CreateTextbox("Chat message...", function(text, enterPressed)
 end)
 
 -- ============================================
---  NOTIFIKASI AWAL
--- ============================================
-Window:Notify("Pole X Loaded", "Selamat menggunakan! Toggle di pojok kiri atas.", 5)
-
-print("Pole X Full Menu siap. Toggle '☰' di kiri atas untuk buka/tutup UI.")
+Window:Notify("Pole X Loaded", "UI siap. Toggle di pojok kiri atas (ID:132783843721344).", 5)
+print("Pole X Full Menu siap.")
