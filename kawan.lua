@@ -1417,6 +1417,16 @@ GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessio
 		end
 	end
 
+	-- [FIX] Pastikan duduk sebelum jawab — kalau berdiri, dudukkan dulu
+	-- Kalau lagi ngeprint, skip (printer loop yang handle duduknya)
+	if not getgenv().isGoingToPrinter then
+		local hum = CharRef.Humanoid
+		if hum and not hum.SeatPart then
+			dudukKeKursi(false)
+			task.wait(1.5)
+		end
+	end
+
 	local correctButton = findCorrectButton(jawaban, 2.5)
 
 	if correctButton then highlightButton(correctButton) end
