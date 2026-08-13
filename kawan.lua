@@ -16,7 +16,6 @@
                   - Fast Chair Routing + FULL ENGLISH UI
                   - [FIX] IDLE_SWITCH_TIME = 12 detik (hanya saat printer, bukan saat jawab soal)
                   - [FIX] lastActivityTime reset tiap soal datang → tidak ganti kursi saat ngerjain soal
-                  - [FIX] Tahan printer lebih lama dan pastikan job benar-benar selesai
 
 ================================================================================
 ]]--
@@ -1590,23 +1589,45 @@ task.spawn(function()
 
 					task.wait(math.random(4,10)/10)
 
-					-- [FIX] Tahan printer lebih lama dan pastikan job benar-benar selesai
-					local printAttempt = 0
-					-- Looping akan terus berjalan selama UI Printer dari server belum hilang (maks 15 kali percobaan)
-					while activePrinterName and printAttempt < 15 do
-						if targetPrompt then
-							pcall(function()
-								targetPrompt:InputHoldBegin()
-								-- Tambah durasi hold (HoldDuration + 1.5 detik ekstra) biar aman dari delay/lag
-								task.wait((targetPrompt.HoldDuration or 1) + 1.5)
-								targetPrompt:InputHoldEnd()
-							end)
-						end
-						task.wait(0.5)
-						printAttempt += 1
-					end
+					-- Hold lebih lama + retry sampai server konfirmasi (activePrinterName = nil)
+					local holdDur = (targetPrompt.HoldDuration or 3) + 2
+					local maxRetry = 5
+					local retryCount = 0
 
-					State.OfficePrints = (State.OfficePrints or 0) + 1
+					while activePrinterName and retryCount < maxRetry do
+						-- Pastikan masih dekat printer sebelum hold
+						if CharRef.Root then
+							local dist = (CharRef.Root.Position - printerPart.Position).Magnitude
+							if dist > 8 then
+								jalanKe(printerPart.Position + Vector3.new(0, 0, 2.5))
+								task.wait(0.5)
+							end
+						end
+
+						-- Hold penuh
+						pcall(function()
+							targetPrompt:InputHoldBegin()
+							task.wait(holdDur)
+							targetPrompt:InputHoldEnd()
+						end)
+
+						-- Tunggu server konfirmasi (ClearPrintJob men-nil-kan activePrinterName)
+						local waitConfirm = 0
+						while activePrinterName and waitConfirm < 5 do
+							task.wait(0.5)
+							waitConfirm += 0.5
+						end
+
+						retryCount += 1
+
+						if not activePrinterName then
+							-- Server sudah konfirmasi selesai
+							State.OfficePrints = (State.OfficePrints or 0) + 1
+							break
+						end
+						-- Belum selesai, jeda sebentar lalu coba lagi
+						task.wait(1)
+					end
 
 					pcall(function()
 						cam.CameraType = prevCamType
