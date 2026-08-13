@@ -3,12 +3,15 @@
   👑 KING AKBAR - ULTIMATE AUTO FARM SCRIPT 👑
 ================================================================================
     [+] Developer   : King Akbar
-    [+] Version     : DDS GLOBAL EDITION (v8.3.2 - F9 CLEAN - 5s ANTI STUCK)
-    [+] Changelog   : - [NEW] safeDestroy (task.defer) → F9 warning spam hilang
+    [+] Version     : DDS GLOBAL EDITION (v8.3.3 - F9 CLEAN + FAST RECOVERY)
+    [+] Changelog   : - [FIX] IDLE_SWITCH_TIME = 5 detik (anti stuck ngeprint)
+                      - [FIX] lastActivityTime refresh saat jawab soal
+                      - [FIX] Bot TIDAK pindah kursi saat lagi jawab math
+                      - [NEW] safeDestroy (task.defer) → F9 warning spam hilang
                       - [NEW] ULTRA POTATO MODE (Extreme FPS + Mutual Exclusion)
                       - [FIX] Math solver firesignal only (method pertama)
                       - [FIX] Monitoring animated numbers (Instance key fix)
-                      - [FIX] Anti-Stuck diubah jadi 5 DETIK SUPER FAST (Request)
+                      - [FIX] Anti-Stuck 5s + Stand/Sit auto recovery
                       - [NEW] DEX Office: findOfficeSeat + joinOfficeTeam
                       - [NEW] PlayerChangedJob:FireServer saat stop Office
                       - [NEW] Camera Printer fix (Scriptable lock saat hold)
@@ -1073,7 +1076,7 @@ local function StopBaristaScript(reason)
 end
 
 -- ============================================================================
--- // 13. OFFICE JOB SYSTEM (v8.2.0 FINAL - klikTombol Edition)
+-- // 13. OFFICE JOB SYSTEM (v8.3.3 FINAL - FAST IDLE RECOVERY)
 -- ============================================================================
 local playerGui       = LocalPlayer:WaitForChild("PlayerGui")
 local ComputersFolder = workspace:WaitForChild("Computers")
@@ -1091,7 +1094,7 @@ local function eksekusiPromptTahan(pp)
     end
 end
 
-local myChair = nil
+local myChair            = nil
 
 local function jalanKe(pos)
     local root = CharRef.Root
@@ -1280,17 +1283,8 @@ local function dudukKeKursi(instantTP)
 end
 
 -- ============================================================================
--- // ANTI-STUCK VARIABLES & ACTIVITY TRACKER (DIPINDAH KE SINI AGAR BISA DIAKSES)
--- ============================================================================
-local lastActivityTime = tick()
-local isSwitching = false
-local IDLE_SWITCH_TIME = 5 -- << SUDAH DIUBAH JADI 5 DETIK SUPER CEPAT ⚡
-
-getgenv().forceStopMath = false
-getgenv().isGoingToPrinter = false
-
--- ============================================================================
--- // AUTO JAWAB SOAL MATEMATIKA (OFFICE) — KING AKBAR V9.3 (GOD MODE)
+-- // AUTO JAWAB SOAL MATEMATIKA (OFFICE) — KING AKBAR V9.4 (SMART IDLE)
+-- // Method: REAL-CLICK + VISUAL HIGHLIGHT + SMART WAIT + IDLE REFRESH
 -- ============================================================================
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -1389,7 +1383,7 @@ local function pressButton(btn)
         local size = btn.AbsoluteSize
         local x = pos.X + size.X / 2
         local y = pos.Y + size.Y / 2
-        SafeClick(x, y, 0.06) 
+        SafeClick(x, y, 0.06)
     end)
     if ok then return "safe-click" end
     return nil
@@ -1398,8 +1392,14 @@ end
 GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessionID)
     if State and State.IsOfficeActive == false then return end
 
+    -- ✅ [FIX v9.4] Refresh idle timer pas soal masuk → bot TIDAK pindah kursi saat jawab
+    lastActivityTime = tick()
+
     local jawaban = evaluateMath(questionText)
-    if not jawaban then return end
+    if not jawaban then 
+        lastActivityTime = tick() -- tetap refresh meski gagal parse
+        return 
+    end
 
     local correctAnswerID = nil
     if type(answerData) == "table" then
@@ -1416,6 +1416,9 @@ GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessio
 
     if correctButton then highlightButton(correctButton) end
 
+    -- ✅ [FIX v9.4] Refresh lagi saat nunggu UI → proteksi extra biar anti-kick-out
+    lastActivityTime = tick()
+
     task.wait(math.random(15, 30) / 10)
 
     if correctButton then
@@ -1426,6 +1429,8 @@ GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessio
     end
 
     if correctButton then
+        -- ✅ [FIX v9.4] Refresh terakhir sebelum klik → tombol pasti ke-klik
+        lastActivityTime = tick()
         local method = pressButton(correctButton)
         if not method then
             pcall(function()
@@ -1434,29 +1439,42 @@ GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessio
         end
         unhighlightLater(correctButton, 0.4)
     elseif correctAnswerID then
+        lastActivityTime = tick()
         CorrectAnswer:FireServer(correctAnswerID, sessionID)
         clearHighlights()
     else
+        lastActivityTime = tick()
         clearHighlights()
     end
+
+    -- ✅ [FIX v9.4] Refresh setelah selesai → reset timer untuk soal berikutnya
+    lastActivityTime = tick()
 
     if State then
         State.OfficeMathSolved = (State.OfficeMathSolved or 0) + 1
     end
-    
-    -- << PENTING: Reset timer disini agar bot tau kita aktif ngejawab
-    lastActivityTime = tick() 
 end)
 
 -- ============================================================================
--- // ANTI-STUCK 5s + IDLE CHAIR SWITCH (LOGIC LOOP)
+-- // ANTI-STUCK 5s + IDLE CHAIR SWITCH (✅ CEPAT TAPI AMAN)
 -- ============================================================================
+-- Bot TIDAK akan pindah kursi saat lagi jawab soal, karena:
+-- 1. lastActivityTime di-refresh setiap GenerateQuestion fire
+-- 2. lastActivityTime di-refresh setiap selesai klik tombol
+-- 3. IDLE_SWITCH_TIME = 5 cuma berlaku kalau BENAR-BENAR idle (stuck/bug ngeprint)
+-- ============================================================================
+local lastActivityTime = tick()
+local isSwitching = false
+local IDLE_SWITCH_TIME = 5  -- ✅ Dipercepat dari 60 → 5 detik (anti stuck ngeprint)
+
+getgenv().forceStopMath = false
+getgenv().isGoingToPrinter = false
+
 task.spawn(function()
     while true do
         task.wait(1)
         if not State.IsOfficeActive then continue end
         if getgenv().isGoingToPrinter or getgenv().forceStopMath or isSwitching then continue end
-        
         if tick() - lastActivityTime > IDLE_SWITCH_TIME then
             isSwitching = true
             getgenv().forceStopMath = true
@@ -1882,6 +1900,8 @@ local function StartOfficeScript()
     CachedMoneyLabel = nil
     getgenv().UangAwalDikunci = nil
     getgenv().WaktuMulai = tick()
+    
+    lastActivityTime = tick() -- ✅ Reset idle timer saat mulai office
 
     joinOfficeTeam()
     task.wait(0.8)
@@ -1903,7 +1923,7 @@ local function StartOfficeScript()
 
     lastActivityTime = tick()
     buatMonitoringGUI()
-    WindUI:Notify({ Title = "✅ Office", Content = "Auto Office v2 started!", Duration = 4 })
+    WindUI:Notify({ Title = "✅ Office", Content = "Auto Office v9.4 started! (Smart Idle)", Duration = 4 })
 end
 
 local function StopOfficeScript()
@@ -2566,7 +2586,7 @@ WindUI:SetTheme("dark")
 TabInfo:Select()
 
 WindUI:Notify({
-    Title    = "👑 KING AKBAR V8.3.2 READY!",
-    Content  = "F9 Clean Edition: 5 Detik Anti-Stuck Active!",
+    Title    = "👑 KING AKBAR V8.3.3 READY!",
+    Content  = "Smart Idle: 5s recovery + no exit saat jawab soal! 🧠",
     Duration = 5,
 })
