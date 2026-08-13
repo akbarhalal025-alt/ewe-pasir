@@ -1,11 +1,12 @@
 --[[
-
 👑 KING AKBAR - ULTIMATE AUTO FARM SCRIPT 👑
 
 [+] Developer   : King Akbar  
-[+] Version     : DDS GLOBAL EDITION (v8.3.2 - F9 CLEAN)  
+[+] Version     : DDS GLOBAL EDITION (v8.3.2 - NATIVE UI & SEAT FIX)  
 [+] Changelog   : - [NEW] safeDestroy (task.defer) → F9 warning spam hilang  
                   - [NEW] ULTRA POTATO MODE (Extreme FPS + Mutual Exclusion)  
+                  - [FIX] Strict Seating Check + Anti Kick Server Bug
+                  - [FIX] Native UI Implementation (Anti-Cheat Crash Fix)
                   - [FIX] Math solver firesignal only (method pertama)  
                   - [FIX] Monitoring animated numbers (Instance key fix)  
                   - [FIX] Anti-Stuck 6s + Stand/Sit auto recovery  
@@ -16,7 +17,6 @@
                   - Fast Chair Routing + FULL ENGLISH UI
                   - [FIX] IDLE_SWITCH_TIME = 12 detik (hanya saat printer, bukan saat jawab soal)
                   - [FIX] lastActivityTime reset tiap soal datang → tidak ganti kursi saat ngerjain soal
-
 ================================================================================
 ]]--
 
@@ -142,44 +142,138 @@ do
 end
 
 -- ============================================================================
--- // 1. LOAD WINDUI (SAFE)
+-- // 1. LOAD NATIVE UI (BYPASS WINDUI ANTI-CHEAT CRASH)
 -- ============================================================================
-local WindUI
+local WindUI = {}
 do
-	local ok, result = pcall(function()
-		return loadstring(game:HttpGet(
-			"https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"
-		))()
-	end)
-	if ok and result then
-		WindUI = result
-	else
-		WindUI = {
-			CreateWindow = function() return {
-				Tab            = function() return {
-					Paragraph  = function() return { Set = function() end } end,
-					Toggle     = function() end,
-					Button     = function() end,
-					Input      = function() end,
-					Slider     = function() end,
-					Section    = function() return {
-						Paragraph = function() return { Set = function() end } end,
-						Toggle    = function() end,
-						Button    = function() end,
-						Input     = function() end,
-						Slider    = function() end,
-					} end,
-					Select     = function() end,
-				} end,
-				Tag            = function() return { SetTitle = function() end } end,
-				EditOpenButton = function() end,
-				SetIconSize    = function() end,
-			} end,
-			Notify   = function() end,
-			SetTheme = function() end,
-			Gradient = function() return {} end,
-		}
+	local CoreGui = gethui and gethui() or game:GetService("CoreGui")
+	local sg = Instance.new("ScreenGui")
+	sg.Name = "KingAkbar_NativeUI"
+	sg.Parent = CoreGui
+	
+	local main = Instance.new("Frame", sg)
+	main.Size = UDim2.new(0, 450, 0, 350)
+	main.Position = UDim2.new(0.5, -225, 0.5, -175)
+	main.BackgroundColor3 = Color3.fromRGB(25, 25, 30)
+	main.Active = true
+	main.Draggable = true
+	
+	local titleLbl = Instance.new("TextLabel", main)
+	titleLbl.Size = UDim2.new(1, 0, 0, 30)
+	titleLbl.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
+	titleLbl.TextColor3 = Color3.fromRGB(255, 255, 255)
+	titleLbl.Font = Enum.Font.GothamBold
+	titleLbl.Text = " 👑 King Akbar - Native Interface"
+	titleLbl.TextXAlignment = Enum.TextXAlignment.Left
+	
+	local content = Instance.new("ScrollingFrame", main)
+	content.Size = UDim2.new(1, -10, 1, -40)
+	content.Position = UDim2.new(0, 5, 0, 35)
+	content.BackgroundTransparency = 1
+	content.CanvasSize = UDim2.new(0, 0, 7, 0)
+	content.ScrollBarThickness = 4
+	
+	local layout = Instance.new("UIListLayout", content)
+	layout.Padding = UDim.new(0, 5)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	
+	function WindUI:CreateWindow(cfg)
+		if cfg.Title then titleLbl.Text = " " .. cfg.Title end
+		local Window = { Container = content, Order = 0 }
+		
+		function Window:Tab(tcfg)
+			Window.Order = Window.Order + 1
+			local tabLbl = Instance.new("TextLabel", content)
+			tabLbl.Size = UDim2.new(1, 0, 0, 25)
+			tabLbl.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+			tabLbl.TextColor3 = Color3.fromRGB(150, 200, 255)
+			tabLbl.Text = "--- " .. (tcfg.Title or "Tab") .. " ---"
+			tabLbl.Font = Enum.Font.GothamBold
+			
+			local tab = { Order = Window.Order }
+			
+			function tab:Section(scfg)
+				local sec = {}
+				function sec:Toggle(tg)
+					local btn = Instance.new("TextButton", content)
+					btn.Size = UDim2.new(1, 0, 0, 30)
+					btn.BackgroundColor3 = Color3.fromRGB(45, 45, 50)
+					btn.TextColor3 = Color3.fromRGB(200, 200, 200)
+					local state = tg.Value or false
+					btn.Text = (tg.Title or "Toggle") .. ": " .. (state and "ON" or "OFF")
+					btn.MouseButton1Click:Connect(function()
+						state = not state
+						btn.Text = (tg.Title or "Toggle") .. ": " .. (state and "ON" or "OFF")
+						if tg.Callback then task.spawn(tg.Callback, state) end
+					end)
+				end
+				function sec:Button(bt)
+					local btn = Instance.new("TextButton", content)
+					btn.Size = UDim2.new(1, 0, 0, 30)
+					btn.BackgroundColor3 = Color3.fromRGB(55, 65, 80)
+					btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+					btn.Text = bt.Title or "Button"
+					btn.MouseButton1Click:Connect(function()
+						if bt.Callback then task.spawn(bt.Callback) end
+					end)
+				end
+				function sec:Input(ip)
+					local txt = Instance.new("TextBox", content)
+					txt.Size = UDim2.new(1, 0, 0, 30)
+					txt.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+					txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+					txt.PlaceholderText = ip.Title or "Input"
+					txt.FocusLost:Connect(function()
+						if ip.Callback then task.spawn(ip.Callback, txt.Text) end
+					end)
+				end
+				function sec:Slider(sl)
+					local txt = Instance.new("TextBox", content)
+					txt.Size = UDim2.new(1, 0, 0, 30)
+					txt.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
+					txt.TextColor3 = Color3.fromRGB(255, 255, 255)
+					txt.PlaceholderText = (sl.Title or "Slider") .. " (Enter value)"
+					txt.FocusLost:Connect(function()
+						local v = tonumber(txt.Text)
+						if v and sl.Callback then task.spawn(sl.Callback, v) end
+					end)
+				end
+				return sec
+			end
+			
+			function tab:Paragraph(pcfg)
+				local lbl = Instance.new("TextLabel", content)
+				lbl.Size = UDim2.new(1, 0, 0, 50)
+				lbl.BackgroundTransparency = 1
+				lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+				lbl.Text = pcfg.Title .. "\n" .. pcfg.Desc
+				lbl.TextWrapped = true
+				
+				local p = {}
+				function p:SetDesc(txt) 
+					lbl.Text = pcfg.Title .. "\n" .. txt
+				end
+				return p
+			end
+			
+			function tab:Select() end
+			
+			return tab
+		end
+		
+		function Window:EditOpenButton() end
+		function Window:Tag() return { SetTitle = function() end } end
+		function Window:SetIconSize() end
+		
+		return Window
 	end
+	
+	function WindUI:Notify(n)
+		print("[NATIVE NOTIFY] " .. tostring(n.Title) .. " | " .. tostring(n.Content))
+	end
+	
+	function WindUI:SetTheme() end
+	function WindUI:Gradient() return Color3.new(1,1,1) end
 end
 
 -- ============================================================================
@@ -1392,16 +1486,20 @@ end
 -- ============================================================================
 -- // [FIX] lastActivityTime direset tiap soal datang
 -- //       → tidak ganti kursi selama lagi aktif jawab soal
+-- // [FIX] Seating check murni untuk bypass anti-cheat kick
 -- ============================================================================
 local lastActivityTime = tick()
 
 GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessionID)
 	if State and State.IsOfficeActive == false then return end
 
-	-- Reset idle timer setiap soal masuk, sehingga Anti-Stuck tidak
-	-- mengganti kursi selama soal terus berdatangan (hanya ganti kalau
-	-- benar-benar idle / printer stuck yang tidak ada soal selama 12 dtk)
+	-- Reset idle timer setiap soal masuk
 	lastActivityTime = tick()
+
+	-- [FIX 1] Cegah eksekusi kalau karakter lagi jalan ke printer atau ganti kursi
+	if getgenv().isGoingToPrinter or isSwitching or getgenv().forceStopMath then
+		return
+	end
 
 	local jawaban = evaluateMath(questionText)
 	if not jawaban then return end
@@ -1417,14 +1515,24 @@ GenerateQuestion.OnClientEvent:Connect(function(questionText, answerData, sessio
 		end
 	end
 
-	-- [FIX] Pastikan duduk sebelum jawab — kalau berdiri, dudukkan dulu
-	-- Kalau lagi ngeprint, skip (printer loop yang handle duduknya)
-	if not getgenv().isGoingToPrinter then
-		local hum = CharRef.Humanoid
-		if hum and not hum.SeatPart then
-			dudukKeKursi(false)
-			task.wait(1.5)
+	local hum = CharRef.Humanoid
+	
+	-- [FIX 2] Paksa duduk dan TUNGGU sampai karakter benar-benar nempel di kursi
+	if hum and not hum.SeatPart then
+		dudukKeKursi(false)
+		
+		local waitLimit = 0
+		-- Tunggu maksimal 3 detik sampai indikator SeatPart terdeteksi
+		while not hum.SeatPart and waitLimit < 3 do
+			task.wait(0.2)
+			waitLimit += 0.2
 		end
+	end
+
+	-- [FIX 3] FINAL CHECK: Kalau sudah ditunggu tapi tetap berdiri, BATALKAN!
+	-- Ini kunci utama yang bikin kamu bebas dari kick server.
+	if hum and not hum.SeatPart then
+		return 
 	end
 
 	local correctButton = findCorrectButton(jawaban, 2.5)
@@ -1477,15 +1585,25 @@ task.spawn(function()
 		if not State.IsOfficeActive then continue end
 		if getgenv().isGoingToPrinter or getgenv().forceStopMath or isSwitching then continue end
 		if tick() - lastActivityTime > IDLE_SWITCH_TIME then
-			isSwitching = true
-			getgenv().forceStopMath = true
-			keluarKursi()
-			local newSeat = findOfficeSeat(myChair)
-			if newSeat then myChair = newSeat end
-			dudukKeKursi(false)
-			getgenv().forceStopMath = false
-			isSwitching = false
-			lastActivityTime = tick()
+			-- Hanya ganti kursi kalau karakter SUDAH duduk
+			-- Kalau masih berdiri (transisi setelah ngeprint), reset timer & tunggu
+			local hum = CharRef.Humanoid
+			if hum and not hum.SeatPart then
+				-- Masih berdiri, coba dudukkan dulu, jangan ganti kursi
+				dudukKeKursi(false)
+				lastActivityTime = tick()
+			else
+				-- Sudah duduk, boleh ganti kursi
+				isSwitching = true
+				getgenv().forceStopMath = true
+				keluarKursi()
+				local newSeat = findOfficeSeat(myChair)
+				if newSeat then myChair = newSeat end
+				dudukKeKursi(false)
+				getgenv().forceStopMath = false
+				isSwitching = false
+				lastActivityTime = tick()
+			end
 		end
 	end
 end)
@@ -2578,6 +2696,6 @@ TabInfo:Select()
 
 WindUI:Notify({
 	Title    = "👑 KING AKBAR V8.3.2 READY!",
-	Content  = "Fix: Ganti kursi 12dtk hanya saat idle, tidak saat jawab soal!",
+	Content  = "Fix: Seating Lock + Native UI Activated!",
 	Duration = 5,
 })
