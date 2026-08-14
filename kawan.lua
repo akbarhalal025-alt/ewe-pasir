@@ -3,7 +3,7 @@
 👑 KING AKBAR - ULTIMATE AUTO FARM SCRIPT 👑
 
 [+] Developer   : King Akbar  
-[+] Version     : DDS GLOBAL EDITION (v8.4.0 - ANTI KICK OFFICE EDITION)  
+[+] Version     : DDS GLOBAL EDITION (v8.3.2 - F9 CLEAN)  
 [+] Changelog   : - [NEW] safeDestroy (task.defer) → F9 warning spam hilang  
                   - [NEW] ULTRA POTATO MODE (Extreme FPS + Mutual Exclusion)  
                   - [FIX] Math solver firesignal only (method pertama)  
@@ -16,7 +16,6 @@
                   - Fast Chair Routing + FULL ENGLISH UI
                   - [FIX] IDLE_SWITCH_TIME = 12 detik (hanya saat printer, bukan saat jawab soal)
                   - [FIX] lastActivityTime reset tiap soal datang → tidak ganti kursi saat ngerjain soal
-                  - [NEW/FIX] Anti Kick pas ngeprint (Jalan + Maju Mundur Otomatis kalau nyangkut)
 
 ================================================================================
 ]]--
@@ -1246,6 +1245,7 @@ local function dudukKeKursi(instantTP)
 	end
 
 	if not myChair then return false end
+	if not instantTP then keluarKursi() end
 
 	local seat = getSeatFromChair(myChair)
 	local handle = myChair:FindFirstChild("Handle")
@@ -1257,8 +1257,6 @@ local function dudukKeKursi(instantTP)
 	if not targetCFrame then return false end
 
 	if instantTP then
-		-- TP cuma dipake di awal (StartOfficeScript)
-		keluarKursi()
 		if CharRef.Root then CharRef.Root.CFrame = targetCFrame; task.wait(0.1) end
 		if seat then seat:Sit(hum); task.wait(1.5); return true
 		else
@@ -1269,47 +1267,16 @@ local function dudukKeKursi(instantTP)
 			end
 		end
 	else
-		-- Habis ngeprint: Jalan ke kursi dan paksa duduk (maju mundur jika nyangkut)
-		if hum.SeatPart then keluarKursi() end
-
-		local maxRetry = 6
-		local tryCount = 0
-
-		while tryCount < maxRetry and State.IsOfficeActive do
-			tryCount += 1
-
-			-- Paksa jalan ke area kursi
-			jalanKe(targetCFrame.Position + Vector3.new(0, 2, 0))
-			hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
-
-			-- Eksekusi duduk
-			if seat then
-				seat:Sit(hum)
-			else
-				for _, child in pairs(myChair:GetChildren()) do
-					if child:IsA("ProximityPrompt") and child.Enabled then
-						eksekusiPromptTahan(child)
-					end
+		jalanKe(targetCFrame.Position + Vector3.new(0, 2, 0))
+		hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
+		if seat then seat:Sit(hum); task.wait(1.5); return true
+		else
+			for _, child in pairs(myChair:GetChildren()) do
+				if child:IsA("ProximityPrompt") and child.Enabled then
+					eksekusiPromptTahan(child); task.wait(1.5); return true
 				end
 			end
-
-			task.wait(1.5)
-
-			-- Kalau sudah berhasil duduk, stop loop
-			if hum.SeatPart then return true end
-
-			-- Kalau belum duduk (gagal/nyangkut), lakukan gerakan maju mundur
-			if CharRef.Root then
-				-- Mundur menjauhi kursi
-				hum:MoveTo(CharRef.Root.Position + (CharRef.Root.CFrame.LookVector * -5))
-				task.wait(0.8)
-				-- Maju lagi nabrak kursi
-				hum:MoveTo(targetCFrame.Position)
-				task.wait(0.8)
-			end
 		end
-
-		return hum.SeatPart ~= nil
 	end
 	return false
 end
@@ -1584,15 +1551,18 @@ task.spawn(function()
 				keluarKursi()
 
 				local hum = CharRef.Humanoid
+
+				-- Matikan seated selama proses print — jangan sampai duduk pas jalan
 				if hum then
 					hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
 				end
 
+				-- Cari printer sekali di awal
 				local printerPart = nil
 				local targetPrompt = nil
 
-				for i=1, 15 do
-					local printerModel = ComputersFolder:FindFirstChild(activePrinterName)
+				for i = 1, 15 do
+					local printerModel = ComputersFolder:FindFirstChild(activePrinterName or "")
 					if printerModel and printerModel:FindFirstChild("Part") then
 						printerPart = printerModel.Part
 						targetPrompt = printerPart:FindFirstChildOfClass("ProximityPrompt")
@@ -1604,14 +1574,20 @@ task.spawn(function()
 					task.wait(0.5)
 				end
 
-				if printerPart and targetPrompt then
+				-- Loop utama: terus ke printer sampai job benar-benar selesai
+				-- Tidak duduk sama sekali selama activePrinterName masih ada
+				while activePrinterName and State.IsOfficeActive and printerPart and targetPrompt do
+
+					-- Jalan ke printer (Seated = false, tidak akan duduk di jalan)
 					jalanKe(printerPart.Position + Vector3.new(0, 0, 2.5))
 
+					-- Hadapkan ke printer
 					if CharRef.Root then
 						local lookTarget = Vector3.new(printerPart.Position.X, CharRef.Root.Position.Y, printerPart.Position.Z)
 						CharRef.Root.CFrame = CFrame.lookAt(CharRef.Root.Position, lookTarget)
 					end
 
+					-- Lock kamera ke printer selama hold
 					local cam = workspace.CurrentCamera
 					local prevCamType = cam.CameraType
 					pcall(function()
@@ -1620,57 +1596,43 @@ task.spawn(function()
 						cam.CFrame = CFrame.lookAt(eyePos, printerPart.Position)
 					end)
 
-					task.wait(math.random(4,10)/10)
+					task.wait(math.random(3, 6) / 10)
 
-					-- Hold lebih lama + retry sampai server konfirmasi (activePrinterName = nil)
+					-- Hold penuh
 					local holdDur = (targetPrompt.HoldDuration or 3) + 2
-					local maxRetry = 5
-					local retryCount = 0
+					pcall(function()
+						targetPrompt:InputHoldBegin()
+						task.wait(holdDur)
+						targetPrompt:InputHoldEnd()
+					end)
 
-					while activePrinterName and retryCount < maxRetry do
-						-- Pastikan masih dekat printer sebelum hold
-						if CharRef.Root then
-							local dist = (CharRef.Root.Position - printerPart.Position).Magnitude
-							if dist > 8 then
-								jalanKe(printerPart.Position + Vector3.new(0, 0, 2.5))
-								task.wait(0.5)
-							end
-						end
+					-- Restore kamera
+					pcall(function() cam.CameraType = prevCamType end)
 
-						-- Hold penuh
-						pcall(function()
-							targetPrompt:InputHoldBegin()
-							task.wait(holdDur)
-							targetPrompt:InputHoldEnd()
-						end)
-
-						-- Tunggu server konfirmasi (ClearPrintJob men-nil-kan activePrinterName)
-						local waitConfirm = 0
-						while activePrinterName and waitConfirm < 5 do
-							task.wait(0.5)
-							waitConfirm += 0.5
-						end
-
-						retryCount += 1
-
-						if not activePrinterName then
-							-- Server sudah konfirmasi selesai
-							State.OfficePrints = (State.OfficePrints or 0) + 1
-							break
-						end
-						-- Belum selesai, jeda sebentar lalu coba lagi
-						task.wait(1)
+					-- Tunggu server konfirmasi (ClearPrintJob nil-kan activePrinterName)
+					local waitConfirm = 0
+					while activePrinterName and waitConfirm < 5 do
+						task.wait(0.5)
+						waitConfirm += 0.5
 					end
 
-					pcall(function()
-						cam.CameraType = prevCamType
-					end)
+					if not activePrinterName then
+						-- Server konfirmasi selesai — keluar loop
+						State.OfficePrints = (State.OfficePrints or 0) + 1
+						break
+					end
+
+					-- Belum selesai: jangan duduk, langsung balik ke printer lagi
+					task.wait(0.8)
+				end
+
+				-- Setelah print selesai: aktifkan seated lagi, baru balik ke kursi
+				if hum then
+					hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
 				end
 
 				local nearestSeat = findOfficeSeat(nil)
-				if nearestSeat then
-					myChair = nearestSeat
-				end
+				if nearestSeat then myChair = nearestSeat end
 
 				dudukKeKursi(false)
 				task.wait(0.5)
@@ -2652,7 +2614,7 @@ WindUI:SetTheme("dark")
 TabInfo:Select()
 
 WindUI:Notify({
-	Title    = "👑 KING AKBAR V8.4.0 READY!",
-	Content  = "Update: Anti-Kick Office aktif! TP mati setelah ngeprint.",
+	Title    = "👑 KING AKBAR V8.3.2 READY!",
+	Content  = "Fix: Ganti kursi 12dtk hanya saat idle, tidak saat jawab soal!",
 	Duration = 5,
 })
