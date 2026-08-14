@@ -1545,14 +1545,19 @@ task.spawn(function()
 			getgenv().isGoingToPrinter = true
 			getgenv().forceStopMath = true
 			getgenv().printWatchdog = tick()
+			lastActivityTime = tick() -- reset idle timer agar anti-stuck tidak ganti kursi saat ngeprint
 
 			pcall(function()
 				task.wait(math.random(5,10)/10)
+
+				-- Simpan kursi asli sebelum pergi ke printer
+				local savedChair = myChair
+
 				keluarKursi()
 
 				local hum = CharRef.Humanoid
 
-				-- Matikan seated selama proses print — jangan sampai duduk pas jalan
+				-- Matikan seated selama proses print — tidak akan duduk pas jalan
 				if hum then
 					hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
 				end
@@ -1578,7 +1583,10 @@ task.spawn(function()
 				-- Tidak duduk sama sekali selama activePrinterName masih ada
 				while activePrinterName and State.IsOfficeActive and printerPart and targetPrompt do
 
-					-- Jalan ke printer (Seated = false, tidak akan duduk di jalan)
+					-- Reset idle timer tiap iterasi supaya anti-stuck tidak ganggu
+					lastActivityTime = tick()
+
+					-- Jalan ke printer (Seated = false, tidak bisa duduk di jalan)
 					jalanKe(printerPart.Position + Vector3.new(0, 0, 2.5))
 
 					-- Hadapkan ke printer
@@ -1626,13 +1634,19 @@ task.spawn(function()
 					task.wait(0.8)
 				end
 
-				-- Setelah print selesai: aktifkan seated lagi, baru balik ke kursi
+				-- Setelah print selesai: aktifkan seated lagi
 				if hum then
 					hum:SetStateEnabled(Enum.HumanoidStateType.Seated, true)
 				end
 
-				local nearestSeat = findOfficeSeat(nil)
-				if nearestSeat then myChair = nearestSeat end
+				-- Kembali ke kursi ASLI sebelum ngeprint (bukan kursi terdekat)
+				-- Kalau kursi asli sudah diambil orang, cari yang kosong
+				if savedChair and (not savedChair.Occupant or savedChair.Occupant == hum) then
+					myChair = savedChair
+				else
+					local nearestSeat = findOfficeSeat(nil)
+					if nearestSeat then myChair = nearestSeat end
+				end
 
 				dudukKeKursi(false)
 				task.wait(0.5)
