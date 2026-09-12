@@ -2,8 +2,10 @@
 ================================================================================
   👑 KING AKBAR - CAR DRIVING INDONESIA
   MODERN DASHBOARD + DELIVERY ASSISTANT + WEBHOOK INTEGRATION
-  VERSION: PROFESSIONAL EDITION (STABLE BUILD - NO JOB TIMEOUT)
-  + NOCLIP LANDING (ANTI TERPENTAL)
+  VERSION: PROFESSIONAL EDITION — NEW ENGINE
+  Features: Auto Clear Building (Robust), Instant Arrival, Auto Retry
+  PATCH: No Noclip saat masuk truk + Altitude 5000 + Robust Building Clear
+  PATCH: Deskripsi metode dikosongkan (stealth)
 ================================================================================
 --]]
 
@@ -51,6 +53,7 @@ local Services = {
     HttpService       = game:GetService("HttpService"),
     StarterGui        = game:GetService("StarterGui"),
     VirtualUser       = game:GetService("VirtualUser"),
+    Workspace         = game:GetService("Workspace"),
 }
 
 local LocalPlayer = Services.Players.LocalPlayer
@@ -250,326 +253,7 @@ local ServerInfo = InfoTab:Paragraph({
 })
 
 -- ============================================================================
--- // 6. FARM TAB
--- ============================================================================
-
--- ANTI AFK
-local StayActiveEnabled = false
-local disabledIdledConns = {}
-
-local function startStayActive()
-    if StayActiveEnabled then return end
-    StayActiveEnabled = true
-    if getconnections and type(getconnections) == "function" then
-        pcall(function()
-            for _, c in ipairs(getconnections(LocalPlayer.Idled)) do
-                if c then
-                    if c.Disable then pcall(c.Disable, c) end
-                    if c.DisableConnection then pcall(c.DisableConnection, c) end
-                    table.insert(disabledIdledConns, c)
-                end
-            end
-        end)
-    end
-    if #disabledIdledConns == 0 then
-        task.spawn(function()
-            while StayActiveEnabled do
-                task.wait(math.random() * 50 + 40)
-                if not StayActiveEnabled then break end
-                pcall(function()
-                    Services.VirtualUser:CaptureController()
-                    Services.VirtualUser:ClickButton2(Vector2.new(), workspace.CurrentCamera.CFrame)
-                end)
-            end
-        end)
-    end
-end
-startStayActive()
-
--- ══════════════════════════════════════════════════════════════════════════
--- DELIVERY CONFIGURATION (TIMEOUT DIHAPUS)
--- ══════════════════════════════════════════════════════════════════════════
-local farmConfig = {
-    jobNPC          = Vector3.new(24034.58,  387.33,  33760.82),
-    startJob        = Vector3.new(34938.02,  135.13, -54577.94),
-    truckSpawn      = Vector3.new(35167.01,  134.51, -54683.35),
-    ascentHeight    = 2000,
-    routeDuration   = 45,
-    settleTime      = 8,
-    maxFails        = 3,
-    autoStart       = true,
-}
-
-local autoFarmRunning = false
-local hookConn, currentDelivery, deliveryUpdated
-
--- JOB EVENT LISTENER (SAFE — auto disconnect lama)
-local function startJobHook()
-    local ev = Services.ReplicatedStorage:WaitForChild("NetworkContainer", 10)
-    if not ev then return end
-    ev = ev:WaitForChild("RemoteEvents", 10)
-    if not ev then return end
-    ev = ev:WaitForChild("Job", 10)
-    if not ev then return end
-
-    if hookConn then
-        pcall(function() hookConn:Disconnect() end)
-        hookConn = nil
-    end
-
-    hookConn = ev.OnClientEvent:Connect(function(action, location)
-        if action == "SetArrow" and typeof(location) == "Vector3" then
-            currentDelivery = location
-            deliveryUpdated = true
-        end
-    end)
-end
-task.spawn(startJobHook)
-
--- ══════════════════════════════════════════════════════════════════════════
--- HELPER FUNCTIONS
--- ══════════════════════════════════════════════════════════════════════════
-local function notify(title, text)
-    pcall(function()
-        Services.StarterGui:SetCore("SendNotification", {
-            Title = title, Text = text, Duration = 3
-        })
-    end)
-end
-
-local function teleportChar(targetVec3)
-    local char = LocalPlayer.Character
-    if not char then return false end
-    local hrp = char:FindFirstChild("HumanoidRootPart")
-    if not hrp then return false end
-    return (pcall(function()
-        hrp.CFrame = CFrame.new(targetVec3)
-    end))
-end
-
-local function waitForCharacter(timeout)
-    local t = 0
-    while t < (timeout or 5) do
-        local char = LocalPlayer.Character
-        if char and char:FindFirstChild("HumanoidRootPart")
-           and char:FindFirstChildOfClass("Humanoid") then
-            return char
-        end
-        task.wait(0.1)
-        t += 0.1
-    end
-    return nil
-end
-
-local function getVehicle()
-    local char = LocalPlayer.Character
-    if not char then return nil end
-    local hum = char:FindFirstChildOfClass("Humanoid")
-    if not hum or not hum.SeatPart then return nil end
-    return hum.SeatPart:FindFirstAncestorOfClass("Model")
-end
-
-local function waitForVehicle(timeout)
-    local t = 0
-    while t < (timeout or 8) do
-        local v = getVehicle()
-        if v and v.Parent then return v end
-        task.wait(0.15)
-        t += 0.15
-    end
-    return nil
-end
-
-local function holdKey(keyCode, duration)
-    pcall(function()
-        Services.VirtualInput:SendKeyEvent(true,  keyCode, false, game)
-    end)
-    task.wait(duration)
-    pcall(function()
-        Services.VirtualInput:SendKeyEvent(false, keyCode, false, game)
-    end)
-end
-
-local function clickUI(element)
-    if not element then return false end
-    local pos
-    local ok = pcall(function()
-        pos = element.AbsolutePosition + (element.AbsoluteSize / 2)
-    end)
-    if not ok or not pos then return false end
-    if pos.X <= 0 or pos.Y <= 0 then return false end
-    for _ = 1, 3 do
-        pcall(function()
-            Services.VirtualInput:SendMouseButtonEvent(pos.X, pos.Y, 0, true,  game, 0)
-        end)
-        task.wait(0.05)
-        pcall(function()
-            Services.VirtualInput:SendMouseButtonEvent(pos.X, pos.Y, 0, false, game, 0)
-        end)
-        task.wait(0.1)
-    end
-    return true
-end
-
--- MONEY HELPERS
-local function parseMoney(text)
-    if not text then return 0 end
-    local clean = text:gsub("[^%d]", "")
-    return tonumber(clean) or 0
-end
-
-local function getMoney()
-    local ok, val = pcall(function()
-        return LocalPlayer.PlayerGui.Main.Container.Hub.CashFrame.Frame.TextLabel.Text
-    end)
-    if ok and val then return parseMoney(val) end
-    return 0
-end
-
-local function formatMoney(n)
-    local s = tostring(math.floor(math.abs(n)))
-    local result = ""
-    local count  = 0
-    for i = #s, 1, -1 do
-        count  = count + 1
-        result = s:sub(i, i) .. result
-        if count % 3 == 0 and i ~= 1 then result = "," .. result end
-    end
-    return "Rp. " .. result
-end
-
-local function formatTime(seconds)
-    local h = math.floor(seconds / 3600)
-    local m = math.floor((seconds % 3600) / 60)
-    local s = math.floor(seconds % 60)
-    if h > 0 then return string.format("%02d:%02d:%02d", h, m, s) end
-    return string.format("%02d:%02d", m, s)
-end
-
--- ══════════════════════════════════════════════════════════════════════════
---  DELIVERY EXECUTION ENGINE (STABLE + NOCLIP LANDING)
--- ══════════════════════════════════════════════════════════════════════════
-local function executeDeliveryRoute(vehicle, target)
-    if not vehicle or not vehicle.Parent then return false end
-    local main = vehicle.PrimaryPart
-    if not main or not main.Parent then return false end
-
-    -- Track anchor + collide state asli tiap part
-    local parts, anchored, collided = {}, {}, {}
-    for _, p in ipairs(vehicle:GetDescendants()) do
-        if p:IsA("BasePart") then
-            parts[#parts + 1] = p
-            anchored[p] = p.Anchored
-            collided[p] = p.CanCollide
-            p.Anchored   = true
-            p.CanCollide = false  -- 🔓 NOCLIP: tembus tembok mulai ascent
-        end
-        if p:IsA("VehicleSeat") then
-            pcall(function()
-                p.ThrottleFloat = 0
-                p.SteerFloat = 0
-            end)
-        end
-    end
-
-    local ok = pcall(function()
-        local _, yRot = main.CFrame:ToEulerAnglesYXZ()
-        local mainCF = main.CFrame
-        local offsets = {}
-        for _, p in ipairs(parts) do
-            if p ~= main then
-                offsets[p] = mainCF:ToObjectSpace(p.CFrame)
-            end
-        end
-
-        local start = target + Vector3.new(0, farmConfig.ascentHeight, 0)
-        main.CFrame = CFrame.new(start) * CFrame.fromEulerAnglesYXZ(0, yRot, 0)
-        for _, p in ipairs(parts) do
-            if p ~= main and offsets[p] and p.Parent then
-                p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
-            end
-        end
-
-        local tween = Services.TweenSvc:Create(
-            main,
-            TweenInfo.new(farmConfig.routeDuration, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-            { CFrame = CFrame.new(target) * CFrame.fromEulerAnglesYXZ(0, yRot, 0) }
-        )
-
-        local conn = Services.RunService.Heartbeat:Connect(function()
-            if not main.Parent then return end
-            for _, p in ipairs(parts) do
-                if p.Parent and p ~= main and offsets[p] then
-                    p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
-                end
-            end
-        end)
-
-        tween:Play()
-        tween.Completed:Wait()
-        conn:Disconnect()
-    end)
-
-    -- ══════════════════════════════════════════════════════════════════════
-    -- 🔓 NOCLIP MASIH ON — tunggu sampai kendaraan menyentuh tanah & settle
-    -- ══════════════════════════════════════════════════════════════════════
-    local settleTime = 2.5
-    local waited     = 0
-    while waited < settleTime do
-        task.wait(0.1)
-        waited += 0.1
-        if not main or not main.Parent then break end
-    end
-
-    -- Sanity check: velocity kendaraan (karena anchored, harusnya 0)
-    pcall(function()
-        if main and main.Parent then
-            main.AssemblyLinearVelocity  = Vector3.zero
-            main.AssemblyAngularVelocity = Vector3.zero
-        end
-    end)
-
-    -- ══════════════════════════════════════════════════════════════════════
-    -- Restore collision DULU (masih anchored → tidak akan bounce)
-    -- ══════════════════════════════════════════════════════════════════════
-    for _, p in ipairs(parts) do
-        if p.Parent then
-            pcall(function()
-                p.CanCollide = collided[p]
-            end)
-        end
-    end
-
-    task.wait(0.25) -- kasih waktu engine register collision baru
-
-    -- ══════════════════════════════════════════════════════════════════════
-    -- Baru restore anchor (physics aktif, tapi collision sudah normal)
-    -- ══════════════════════════════════════════════════════════════════════
-    for _, p in ipairs(parts) do
-        if p.Parent then
-            p.Anchored = anchored[p]
-            pcall(function()
-                p.AssemblyLinearVelocity  = Vector3.zero
-                p.AssemblyAngularVelocity = Vector3.zero
-            end)
-        end
-    end
-
-    -- Extra settle kecil biar stabil sebelum next cycle
-    task.wait(0.4)
-
-    return ok
-end
-
--- ============================================================================
--- // DELIVERY TRACKING
--- ============================================================================
-local delivHistory    = {0,0,0,0,0,0,0,0,0}
-local lastDelivMoney  = 0
-local updateDelivBars
-
--- ============================================================================
--- // MONEY TRACKER OVERLAY — MINIMALIST DASHBOARD
+-- // 6. MONEY TRACKER OVERLAY — MINIMALIST DASHBOARD
 -- ============================================================================
 local C = {
     BG         = Color3.fromHex("#0A0C10"),
@@ -604,7 +288,7 @@ MT_wrap.Position = UDim2.new(0.5,0,0.5,22)
 MT_wrap.BackgroundTransparency = 1
 
 local MT_scale = Instance.new("UIScale", MT_wrap)
-local MT_cam   = workspace.CurrentCamera
+local MT_cam   = Services.Workspace.CurrentCamera
 local function MT_doScale()
     local vp = MT_cam.ViewportSize
     MT_scale.Scale = math.clamp(math.min((vp.X*0.92)/960,(vp.Y*0.90)/540), 0.36, 1.05)
@@ -734,8 +418,8 @@ local function mkMainCard(xOff, col, title)
     return val
 end
 
-local MT_valProfit  = mkMainCard(0,          C.GREEN, "TOTAL PROFIT")
-local MT_valPerHour = mkMainCard(R2W+10,     C.GREEN, "INCOME / HOUR")
+local MT_valProfit  = mkMainCard(0,      C.GREEN, "TOTAL PROFIT")
+local MT_valPerHour = mkMainCard(R2W+10, C.GREEN, "INCOME / HOUR")
 
 -- ROW 3: MINI CARDS
 local R3W = (LW - 20) / 3
@@ -760,9 +444,9 @@ local function mkMiniCard(xOff, col, title)
     return val
 end
 
-local MT_valPerDeliv   = mkMiniCard(0,                  C.TEXT_MAIN, "PER DELIVERY")
-local MT_valDelPerHour = mkMiniCard(R3W+10,             C.TEXT_MAIN, "DEL / HOUR")
-local MT_valInitial    = mkMiniCard((R3W+10)*2,         C.TEXT_MAIN, "START BALANCE")
+local MT_valPerDeliv   = mkMiniCard(0,          C.TEXT_MAIN, "PER DELIVERY")
+local MT_valDelPerHour = mkMiniCard(R3W+10,     C.TEXT_MAIN, "DEL / HOUR")
+local MT_valInitial    = mkMiniCard((R3W+10)*2, C.TEXT_MAIN, "START BALANCE")
 
 -- ROW 4: INFO STRIP
 local infoStrip = mkFr(leftPanel, {
@@ -813,7 +497,7 @@ for i = 1, 9 do
         Size=UDim2.new(0,14,0,4),
         Position=UDim2.new(0,(i-1)*20,1,-4),
         BackgroundColor3=C.TEXT_DIM,
-    }); cr(b,4);
+    }); cr(b,4)
     table.insert(delivBars, b)
 end
 
@@ -828,6 +512,10 @@ mkLb(delivCard, {
     TextColor3=C.TEXT_DIM, Font=Enum.Font.Gotham, TextSize=8,
     TextXAlignment=Enum.TextXAlignment.Left,
 })
+
+local delivHistory   = {0,0,0,0,0,0,0,0,0}
+local lastDelivMoney = 0
+local updateDelivBars
 
 updateDelivBars = function()
     local maxVal = 0
@@ -985,6 +673,40 @@ end)
 local bestDelivProfit = 0
 local bestPerHour     = 0
 
+local function parseMoney(text)
+    if not text then return 0 end
+    local clean = text:gsub("[^%d]", "")
+    return tonumber(clean) or 0
+end
+
+local function getMoney()
+    local ok, val = pcall(function()
+        return LocalPlayer.PlayerGui.Main.Container.Hub.CashFrame.Frame.TextLabel.Text
+    end)
+    if ok and val then return parseMoney(val) end
+    return 0
+end
+
+local function formatMoney(n)
+    local s = tostring(math.floor(math.abs(n)))
+    local result = ""
+    local count  = 0
+    for i = #s, 1, -1 do
+        count  = count + 1
+        result = s:sub(i, i) .. result
+        if count % 3 == 0 and i ~= 1 then result = "," .. result end
+    end
+    return "Rp. " .. result
+end
+
+local function formatTime(seconds)
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    local s = math.floor(seconds % 60)
+    if h > 0 then return string.format("%02d:%02d:%02d", h, m, s) end
+    return string.format("%02d:%02d", m, s)
+end
+
 local function resetMoneyTracker()
     Stats.moneyBefore    = getMoney()
     Stats.moneyNow       = Stats.moneyBefore
@@ -996,22 +718,20 @@ local function resetMoneyTracker()
     bestDelivProfit      = 0
     bestPerHour          = 0
 
-    MT_balanceMain.Text  = formatMoney(Stats.moneyBefore)
-    MT_valProfit.Text    = "Rp. 0"
-    MT_valPerHour.Text   = "Rp. 0"
-    MT_valInitial.Text   = formatMoney(Stats.moneyBefore)
-    MT_valPerDeliv.Text  = "—"
-    MT_valDelPerHour.Text= "0 / H"
-    MT_delivCount.Text   = "0"
-    MT_uptimeVal.Text    = "00:00"
-    MT_progLabel.Text    = "SESSION GAIN: Rp. 0  —  TARGET Rp. 5.000.000"
+    MT_balanceMain.Text   = formatMoney(Stats.moneyBefore)
+    MT_valProfit.Text     = "Rp. 0"
+    MT_valPerHour.Text    = "Rp. 0"
+    MT_valInitial.Text    = formatMoney(Stats.moneyBefore)
+    MT_valPerDeliv.Text   = "—"
+    MT_valDelPerHour.Text = "0 / H"
+    MT_delivCount.Text    = "0"
+    MT_uptimeVal.Text     = "00:00"
+    MT_progLabel.Text     = "SESSION GAIN: Rp. 0  —  TARGET Rp. 5.000.000"
     MT_progLabel.TextColor3 = C.TEXT_SUB
-    Services.TweenSvc:Create(progFill,  TweenInfo.new(0.3), {Size=UDim2.new(0,0,1,0)}):Play()
+    Services.TweenSvc:Create(progFill,    TweenInfo.new(0.3), {Size=UDim2.new(0,0,1,0)}):Play()
     Services.TweenSvc:Create(elapsedFill, TweenInfo.new(0.3), {Size=UDim2.new(0,0,1,0)}):Play()
     updateDelivBars()
 end
-
-local MT_rowDeliver = MT_delivCount
 
 local dotPhase = false
 task.spawn(function()
@@ -1028,8 +748,7 @@ local MT_accum = 0
 Services.RunService.Heartbeat:Connect(function(dt)
     if not moneyTrackerGui.Enabled then return end
 
-    -- Single source of truth: wall-clock
-    Stats.farmTime = os.time() - Stats.startTime
+    Stats.farmTime    = os.time() - Stats.startTime
     MT_uptimeVal.Text = formatTime(Stats.farmTime)
     elapsedFill.Size  = UDim2.new(math.clamp(Stats.farmTime/7200,0,1), 0, 1, 0)
 
@@ -1092,199 +811,628 @@ Services.RunService.Heartbeat:Connect(function(dt)
 end)
 
 -- ============================================================================
--- // DELIVERY CYCLE (NO TIMEOUT — STAY ON TRUCK)
+-- // 7. AUTO FARM ENGINE
 -- ============================================================================
-local function runFarmCycle()
-    -- 0. Pastikan character ready
-    if not waitForCharacter(5) then return end
 
-    -- 1. Teleport ke NPC Job
-    teleportChar(farmConfig.jobNPC)
-    task.wait(2)
-    if not autoFarmRunning then return end
+-- ===== AUTO CLEAR BUILDING (ROBUST) =====
+local CLEAR_BUILDING_INDEX = 1155        -- index gedung yang dihapus
+local CLEAR_BUILDING_NAME  = nil         -- opsional: isi nama gedung buat verifikasi
 
-    -- 2. Buka menu Job
-    holdKey(Enum.KeyCode.E, 1.5)
-    task.wait(2)
-    if not autoFarmRunning then return end
+local function clearTargetBuilding()
+    local map = Services.Workspace:FindFirstChild("Map")
+    if not map then return false, "Map tidak ditemukan" end
 
-    -- 3. Klik Truck (retry 4x)
-    for _ = 1, 4 do
-        local ok1, truckBtn = pcall(function()
-            return LocalPlayer.PlayerGui.Job.Components.ScrollingFrame.Truck
-        end)
-        if ok1 and truckBtn then
-            if clickUI(truckBtn) then break end
+    local prop = map:FindFirstChild("Prop")
+    if not prop then return false, "Map.Prop tidak ditemukan" end
+
+    local children = prop:GetChildren()
+    if #children < CLEAR_BUILDING_INDEX then
+        return false, ("Children cuma %d, index %d belum ada")
+            :format(#children, CLEAR_BUILDING_INDEX)
+    end
+
+    local building = children[CLEAR_BUILDING_INDEX]
+    if not building then return false, "Building nil" end
+
+    if CLEAR_BUILDING_NAME and building.Name ~= CLEAR_BUILDING_NAME then
+        warn(("[King Akbar] ⚠️ Nama beda! Expected '%s', dapat '%s' — tetap dihapus.")
+            :format(CLEAR_BUILDING_NAME, building.Name))
+    end
+
+    local name = building.Name
+    building:Destroy()
+    print(("🏢 Building removed [%d]: %s"):format(CLEAR_BUILDING_INDEX, name))
+    return true, name
+end
+
+-- Retry sampai ketemu (max ~10 detik)
+task.spawn(function()
+    for attempt = 1, 20 do
+        local ok, info = clearTargetBuilding()
+        if ok then
+            print(("✅ Building cleared on attempt %d"):format(attempt))
+            return
         end
-        task.wait(0.4)
+        task.wait(0.5)
     end
-    task.wait(1)
-    if not autoFarmRunning then return end
+    warn("[King Akbar] ❌ Gagal hapus gedung setelah 20 percobaan.")
+end)
 
-    -- 4. Tutup menu Job (retry 4x)
-    for _ = 1, 4 do
-        local ok2, closeBtn = pcall(function()
-            return LocalPlayer.PlayerGui.Job.Components.TextButton
-        end)
-        if ok2 and closeBtn then
-            clickUI(closeBtn)
-            break
+-- ===== FARM CONFIG =====
+local farmConfig = {
+    MALANG_COORD         = Vector3.new(-7847.49, 386.65, 46865.19),
+    STARTER_COORD        = Vector3.new(34938.24, 134.51, -54574.96),
+    TRUCK_SEAT_POSITION  = Vector3.new(35173.47, 134.51, -54683.63),
+    STARTER_DISTANCE     = 20,
+    MALANG_POLL_INTERVAL = 0.02,
+    highAltitude         = 5000,
+    descendTime          = 45,
+}
+
+-- ===== STATE =====
+local autoFarmRunning    = false
+local collisionOffModel  = nil
+local CameraFollowLocked = false
+local CameraFollowOffset = Vector3.new(0, 5, 15)
+
+-- ===== PATH REFERENCE =====
+local Starter, Spawner
+pcall(function()
+    Starter = Services.Workspace:WaitForChild("Etc", 10)
+        :WaitForChild("Job", 5):WaitForChild("Truck", 5):WaitForChild("Starter", 5)
+end)
+pcall(function()
+    Spawner = Services.Workspace:WaitForChild("Etc", 10)
+        :WaitForChild("Job", 5):WaitForChild("Truck", 5):WaitForChild("Spawner", 5)
+end)
+
+-- ===== UTIL =====
+local function notify(title, text)
+    pcall(function()
+        Services.StarterGui:SetCore("SendNotification", {
+            Title = title, Text = text, Duration = 3,
+        })
+    end)
+end
+
+-- ===== COLLISION & CAMERA =====
+local function SetCollisionOff(model)
+    if not model then return end
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = false end
+    end
+    collisionOffModel = model
+end
+
+local function SetCollisionOn(model)
+    if not model then return end
+    for _, part in ipairs(model:GetDescendants()) do
+        if part:IsA("BasePart") then part.CanCollide = true end
+    end
+    if collisionOffModel == model then collisionOffModel = nil end
+end
+
+local function TurnOnCollisionIfNeeded()
+    if collisionOffModel then SetCollisionOn(collisionOffModel) end
+end
+
+local function UpdateCameraFollow()
+    if not CameraFollowLocked then return end
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    local targetPos = char.HumanoidRootPart.Position
+    local cam = Services.Workspace.CurrentCamera
+    cam.CameraType = Enum.CameraType.Scriptable
+    cam.CFrame = CFrame.lookAt(targetPos + CameraFollowOffset, targetPos)
+end
+
+local function EnableCameraFollowLock(offset)
+    CameraFollowLocked = true
+    if offset then CameraFollowOffset = offset end
+    UpdateCameraFollow()
+end
+
+local function DisableCameraFollowLock()
+    CameraFollowLocked = false
+    Services.Workspace.CurrentCamera.CameraType = Enum.CameraType.Follow
+end
+
+Services.RunService.RenderStepped:Connect(UpdateCameraFollow)
+
+-- ===== JOB HELPERS =====
+local function IsMalang()
+    local ok, destPart = pcall(function()
+        return Services.Workspace:WaitForChild("Etc", 5)
+            :WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
+    end)
+    if not ok or not destPart then return false end
+    if (destPart.Position - farmConfig.MALANG_COORD).Magnitude < 100 then return true end
+    local bb = destPart:FindFirstChild("BillboardGui")
+    if bb then
+        for _, c in ipairs(bb:GetChildren()) do
+            if c:IsA("TextLabel") and string.find(string.lower(c.Text), "malang") then
+                return true
+            end
         end
-        task.wait(0.3)
     end
-    task.wait(2)
-    if not autoFarmRunning then return end
+    return false
+end
 
-    -- 5. Teleport ke start job
-    teleportChar(farmConfig.startJob)
-    task.wait(3)
-    if not autoFarmRunning then return end
+local function FindTruckButton()
+    local jobGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("Job")
+    if not jobGui then return nil end
+    local comp = jobGui:FindFirstChild("Components")
+    if not comp then return nil end
+    local scroll = comp:FindFirstChild("ScrollingFrame")
+    if not scroll then return nil end
+    local truck = scroll:FindFirstChild("Truck")
+    if not truck then return nil end
+    return truck:FindFirstChild("Button")
+end
 
-    -- 6. Request route — WAIT TANPA TIMEOUT
-    currentDelivery  = nil
-    deliveryUpdated  = false
-    holdKey(Enum.KeyCode.E, 1.1)
+local function FindJobRemote()
+    local RS = Services.ReplicatedStorage
+    local net = RS:FindFirstChild("NetworkContainer")
+    if net then
+        local re = net:FindFirstChild("RemoteEvents")
+        if re then
+            local j = re:FindFirstChild("Job")
+            if j then return j end
+        end
+    end
+    for _, obj in ipairs(RS:GetDescendants()) do
+        if obj:IsA("RemoteEvent") and obj.Name == "Job" then return obj end
+    end
+    return nil
+end
 
-    -- Nunggu SetArrow tanpa batas, stop cuma kalau user stop
-    while not deliveryUpdated do
-        task.wait(0.2)
-        if not autoFarmRunning then return end
+local function FireJobRemote()
+    local remote = FindJobRemote()
+    if not remote then return false end
+    pcall(function() remote:FireServer("Truck") end)
+    pcall(function() remote:FireServer("TruckDriver") end)
+    pcall(function() remote:FireServer("SOPIR TRUK") end)
+    pcall(function() remote:FireServer("Truck", "Job") end)
+    return true
+end
+
+-- ===== MOVEMENT =====
+local function GetGroundY(targetPos, exclude)
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = exclude or { LocalPlayer.Character }
+    local result = Services.Workspace:Raycast(
+        targetPos + Vector3.new(0, 500, 0), Vector3.new(0, -1, 0), params
+    )
+    return result and result.Position.Y or targetPos.Y
+end
+
+local function TeleportFarmCharacter(targetPos)
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    if not char or not root then return false end
+    local wasAnchored = root.Anchored
+    root.Anchored = true
+    local target = CFrame.new(targetPos + Vector3.new(0, 3, 0))
+    char:PivotTo(target)
+    root.AssemblyLinearVelocity  = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
+    root.Velocity                = Vector3.zero
+    task.wait(0.05)
+    char:PivotTo(target)
+    root.Anchored = wasAnchored
+    return true
+end
+
+local function TeleportToStarterStable()
+    local char = LocalPlayer.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char and char:FindFirstChildOfClass("Humanoid")
+    if not char or not root then return false end
+
+    if humanoid and humanoid.SeatPart then
+        humanoid.Sit = false
+        pcall(function() humanoid:ChangeState(Enum.HumanoidStateType.GettingUp) end)
+        Services.RunService.Heartbeat:Wait()
     end
 
-    -- Kalau target kosong (edge case), tunggu lagi
-    while not currentDelivery do
-        task.wait(0.3)
-        if not autoFarmRunning then return end
+    local groundY = GetGroundY(farmConfig.STARTER_COORD, { char })
+    local target  = CFrame.new(
+        farmConfig.STARTER_COORD.X, groundY + 4, farmConfig.STARTER_COORD.Z
+    )
+
+    local states = {}
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            states[part] = part.Anchored
+            part.Anchored = true
+        end
     end
 
-    -- 7. Teleport ke spawn truck
-    teleportChar(farmConfig.truckSpawn)
-    task.wait(3)
-    if not autoFarmRunning then return end
+    char:PivotTo(target)
+    root.AssemblyLinearVelocity  = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
+    root.Velocity                = Vector3.zero
+    Services.RunService.Heartbeat:Wait()
 
-    -- 8. Masuk truck
-    holdKey(Enum.KeyCode.F, 1.1)
-    task.wait(3)
-    if not autoFarmRunning then return end
-    holdKey(Enum.KeyCode.E, 1.1)
+    for part, wasA in pairs(states) do
+        if part and part.Parent then part.Anchored = wasA end
+    end
 
-    -- 9. Tunggu sampai benar-benar seat
-    local vehicle = waitForVehicle(8)
-    if not vehicle then
-        notify("Delivery", "⚠️ Gagal masuk truck, retry...")
+    root.AssemblyLinearVelocity  = Vector3.zero
+    root.AssemblyAngularVelocity = Vector3.zero
+    root.Velocity                = Vector3.zero
+    return true
+end
+
+-- ===== PROMPT / SEAT =====
+local function GetCurrentTruckModel()
+    local char = LocalPlayer.Character
+    if not char then return nil end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if hum and hum.SeatPart then
+        return hum.SeatPart:FindFirstAncestorOfClass("Model")
+    end
+    return nil
+end
+
+local function HoldPrompt(prompt)
+    if not prompt or not prompt.Parent then return false end
+    return pcall(function()
+        prompt:InputHoldBegin()
+        local hold = tonumber(prompt.HoldDuration) or 0
+        task.wait(math.max(0.12, hold + 0.05))
+        prompt:InputHoldEnd()
+    end)
+end
+
+local function TapPromptDuduk(prompt)
+    pcall(function()
+        prompt:InputHoldBegin()
+        task.wait(1.1)
+        prompt:InputHoldEnd()
+    end)
+end
+
+local function FindSitPrompt()
+    local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+    local pp = root.Position
+    local best, bestDist = nil, math.huge
+    for _, obj in ipairs(Services.Workspace:GetDescendants()) do
+        if obj:IsA("ProximityPrompt") then
+            local n = obj.Name:lower()
+            if n:find("sit") or n:find("driver") or n:find("seat") then
+                local parent = obj.Parent
+                local pos = parent:IsA("BasePart") and parent.Position
+                    or (parent and parent:GetPivot().Position or pp)
+                local d = (pos - pp).Magnitude
+                if d < bestDist and d < 50 then
+                    bestDist = d
+                    best = obj
+                end
+            end
+        end
+    end
+    return best
+end
+
+local function TriggerSpawnerSmart()
+    local prompt = Spawner and Spawner:FindFirstChildOfClass("ProximityPrompt")
+    if not prompt and Spawner then
+        for _, d in ipairs(Spawner:GetDescendants()) do
+            if d:IsA("ProximityPrompt") then prompt = d; break end
+        end
+    end
+    if prompt then HoldPrompt(prompt); return true end
+    return false
+end
+
+-- ===== KING AKBAR DROP (Instant Arrival) =====
+local function kingAkbarDrop(vehicle, target)
+    if not vehicle then return end
+    local main = vehicle.PrimaryPart
+    if not main then return end
+
+    local parts, anchored = {}, {}
+    for _, p in ipairs(vehicle:GetDescendants()) do
+        if p:IsA("BasePart") then
+            parts[#parts + 1] = p
+            anchored[p] = p.Anchored
+            p.Anchored = true
+        end
+        if p:IsA("VehicleSeat") then
+            pcall(function()
+                p.ThrottleFloat = 0
+                p.SteerFloat    = 0
+            end)
+        end
+    end
+
+    local _, yRot = main.CFrame:ToEulerAnglesYXZ()
+    local mainCF  = main.CFrame
+    local offsets = {}
+    for _, p in ipairs(parts) do
+        if p ~= main then offsets[p] = mainCF:ToObjectSpace(p.CFrame) end
+    end
+
+    local highPos = target + Vector3.new(0, farmConfig.highAltitude, 0)
+    main.CFrame = CFrame.new(highPos) * CFrame.fromEulerAnglesYXZ(0, yRot, 0)
+    for _, p in ipairs(parts) do
+        if p ~= main and offsets[p] then
+            p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
+        end
+    end
+
+    local tween = Services.TweenSvc:Create(
+        main,
+        TweenInfo.new(farmConfig.descendTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        { CFrame = CFrame.new(target) * CFrame.fromEulerAnglesYXZ(0, yRot, 0) }
+    )
+
+    local conn = Services.RunService.Heartbeat:Connect(function()
+        for _, p in ipairs(parts) do
+            if p ~= main and offsets[p] and p.Parent then
+                p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
+            end
+        end
+    end)
+
+    tween:Play()
+    tween.Completed:Wait()
+    conn:Disconnect()
+
+    for _, p in ipairs(parts) do
+        if p.Parent then
+            p.Anchored = anchored[p]
+            pcall(function()
+                p.AssemblyLinearVelocity  = Vector3.zero
+                p.AssemblyAngularVelocity = Vector3.zero
+            end)
+        end
+    end
+end
+
+-- ===== ENSURE SEATED =====
+local function EnsureSeated()
+    while autoFarmRunning do
+        print("🔄 Attempting to seat...")
+        if Spawner then
+            TeleportFarmCharacter(Spawner:GetPivot().Position)
+            task.wait(farmConfig.MALANG_POLL_INTERVAL)
+            TriggerSpawnerSmart()
+            EnableCameraFollowLock()
+        end
+        local t0 = tick()
+        while (tick() - t0) < 1.5 do
+            if not autoFarmRunning then return nil end
+            task.wait(0.1)
+            if FindSitPrompt() ~= nil then break end
+        end
+        TeleportFarmCharacter(farmConfig.TRUCK_SEAT_POSITION)
+        task.wait(0.6)
+        local sitPrompt = FindSitPrompt()
+        if sitPrompt then
+            TapPromptDuduk(sitPrompt)
+            local t1 = tick()
+            while tick() - t1 < 1.5 do
+                local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.SeatPart then break end
+                task.wait(farmConfig.MALANG_POLL_INTERVAL)
+            end
+        else
+            continue
+        end
+        local truck = GetCurrentTruckModel()
+        if truck then
+            print("✅ Successfully seated in truck!")
+            return truck
+        end
+    end
+    return nil
+end
+
+-- ===== MAIN FARM LOOP =====
+local function FarmLoop()
+    if not Starter or not Spawner then
+        warn("❌ Starter/Spawner not found!")
+        autoFarmRunning = false
         return
     end
 
-    task.wait(1)
-    if not autoFarmRunning then return end
-
-    -- 10. Aktifkan dashboard
     moneyTrackerGui.Enabled = true
     resetMoneyTracker()
 
-    -- 11. MAIN LOOP — stay on truck, no back-to-job
-    local consecutiveFails = 0
     while autoFarmRunning do
-        vehicle = getVehicle()
-        if not vehicle or not vehicle.Parent then
-            notify("Delivery", "🚪 Truck hilang, akhiri sesi")
-            break
-        end
-
-        Stats.deliveries += 1
-        Stats.farmTime   = os.time() - Stats.startTime
-
-        if MT_rowDeliver then
-            MT_rowDeliver.Text = tostring(Stats.deliveries)
-        end
-
-        local moneyNow    = getMoney()
-        local delivProfit = moneyNow - lastDelivMoney
-        lastDelivMoney    = moneyNow
-        table.remove(delivHistory, 1)
-        table.insert(delivHistory, math.max(0, delivProfit))
-        if updateDelivBars then updateDelivBars() end
-
-        local targetNow = currentDelivery
-        if not targetNow then
-            -- Tunggu target baru tanpa batas, jangan balik ke job
-            while not currentDelivery do
-                task.wait(0.3)
-                if not autoFarmRunning then break end
+        -- 1. Select Job
+        print("🎯 Selecting job...")
+        for _ = 1, 10 do
+            local jobGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("Job")
+            if jobGui then
+                local button = FindTruckButton()
+                if button then pcall(function() button:Click() end); break end
             end
-            if not autoFarmRunning then break end
-            targetNow = currentDelivery
+            task.wait(farmConfig.MALANG_POLL_INTERVAL)
         end
+        FireJobRemote()
+        task.wait(farmConfig.MALANG_POLL_INTERVAL)
 
-        currentDelivery = nil
-        deliveryUpdated = false
+        -- 2. Move to Starter
+        print("📌 Moving to Starter...")
+        EnableCameraFollowLock(Vector3.new(0, 5, 15))
+        local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local dist = root and (root.Position - farmConfig.STARTER_COORD).Magnitude or math.huge
+        if dist > farmConfig.STARTER_DISTANCE then TeleportToStarterStable() end
 
-        local ok = executeDeliveryRoute(vehicle, targetNow)
-        if not ok then
-            consecutiveFails += 1
-            if consecutiveFails >= farmConfig.maxFails then
-                notify("Delivery", "❌ Gagal berulang, restart")
-                break
-            end
-            task.wait(2)
+        local starterPrompt = Starter:FindFirstChild("Prompt")
+            or Starter:FindFirstChildOfClass("ProximityPrompt")
+        if starterPrompt then
+            HoldPrompt(starterPrompt)
         else
-            consecutiveFails = 0
+            for _, d in ipairs(Starter:GetDescendants()) do
+                if d:IsA("ProximityPrompt") then HoldPrompt(d); break end
+            end
         end
 
-        -- Settle time setelah tween selesai
-        for _ = 1, farmConfig.settleTime do
-            if not autoFarmRunning then break end
-            task.wait(1)
+        -- 3. Verify destination
+        print("🔍 Checking destination...")
+        local destMalang = false
+        for _ = 1, 3 do
+            task.wait(farmConfig.MALANG_POLL_INTERVAL)
+            if IsMalang() then destMalang = true; break end
         end
-        if not autoFarmRunning then break end
+        DisableCameraFollowLock()
 
-        -- NUNGGU TARGET BARU TANPA TIMEOUT (stay on truck)
-        while not deliveryUpdated do
-            task.wait(0.2)
-            if not autoFarmRunning then break end
+        if not destMalang then
+            print("❌ Not Malang, retrying...")
+            TurnOnCollisionIfNeeded()
+        else
+            print("✅ Malang destination confirmed!")
+            local truck = EnsureSeated()
+            if not truck then break end
+
+            if not autoFarmRunning then
+                TurnOnCollisionIfNeeded()
+                DisableCameraFollowLock()
+                return
+            end
+
+            -- 4. Instant Arrival
+            print("🚀 Instant arrival (altitude " .. farmConfig.highAltitude .. ")...")
+            local destPart = Services.Workspace
+                :WaitForChild("Etc", 5):WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
+            local destPos  = destPart.Position
+
+            kingAkbarDrop(truck, destPos)
+
+            if not autoFarmRunning then
+                TurnOnCollisionIfNeeded()
+                DisableCameraFollowLock()
+                return
+            end
+
+            -- 5. Update stats on delivery
+            Stats.deliveries += 1
+            local moneyNow    = getMoney()
+            local delivProfit = moneyNow - lastDelivMoney
+            lastDelivMoney    = moneyNow
+            table.remove(delivHistory, 1)
+            table.insert(delivHistory, math.max(0, delivProfit))
+            updateDelivBars()
+
+            -- 6. Wait for destination change (next delivery)
+            print("⏳ Waiting for destination change...")
+            local lastDestPos = destPos
+            local startWait   = tick()
+            while (tick() - startWait) < 60 do
+                if not autoFarmRunning then
+                    TurnOnCollisionIfNeeded()
+                    DisableCameraFollowLock()
+                    return
+                end
+                task.wait(1)
+                local ok, newDest = pcall(function()
+                    return Services.Workspace
+                        :WaitForChild("Etc", 5):WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
+                end)
+                if ok and newDest then
+                    if (newDest.Position - lastDestPos).Magnitude > 5 then
+                        print("✅ Destination changed! Reward received.")
+                        break
+                    end
+                end
+            end
+
+            TurnOnCollisionIfNeeded()
+            DisableCameraFollowLock()
         end
     end
 
     moneyTrackerGui.Enabled = false
 end
 
+-- ===== START / STOP =====
 local function startFarm()
     if autoFarmRunning then return end
     autoFarmRunning = true
-
-    task.spawn(startJobHook)
-    task.wait(0.5)
-
-    notify("Delivery", "🚀 Auto Delivery dimulai")
-
+    notify("King Akbar", "🚛 Auto Delivery STARTED")
     task.spawn(function()
         while autoFarmRunning do
-            local ok, err = pcall(runFarmCycle)
-            if not ok then
-                warn("[King Akbar] Farm cycle error: " .. tostring(err))
+            local ok, err = pcall(FarmLoop)
+            if not ok and autoFarmRunning then
+                warn("[King Akbar] FarmLoop recovered: " .. tostring(err))
+                task.wait(0.5)
+            else
+                break
             end
-            if autoFarmRunning then task.wait(2) end
         end
     end)
 end
 
 local function stopFarm()
     autoFarmRunning = false
-    currentDelivery = nil
-    deliveryUpdated = false
+    DisableCameraFollowLock()
+    TurnOnCollisionIfNeeded()
     moneyTrackerGui.Enabled = false
-
-    if hookConn then
-        pcall(function() hookConn:Disconnect() end)
-        hookConn = nil
-    end
-
-    notify("Delivery", "⏹️ Auto Delivery dihentikan")
+    notify("King Akbar", "⏹️ Auto Delivery STOPPED")
 end
 
--- Farm Tab UI
+-- ============================================================================
+-- // 8. FARM TAB UI
+-- ============================================================================
+
+-- ANTI AFK
+local StayActiveEnabled = false
+local disabledIdledConns = {}
+
+local function startStayActive()
+    if StayActiveEnabled then return end
+    StayActiveEnabled = true
+    if getconnections and type(getconnections) == "function" then
+        pcall(function()
+            for _, c in ipairs(getconnections(LocalPlayer.Idled)) do
+                if c then
+                    if c.Disable then pcall(c.Disable, c) end
+                    if c.DisableConnection then pcall(c.DisableConnection, c) end
+                    table.insert(disabledIdledConns, c)
+                end
+            end
+        end)
+    end
+    if #disabledIdledConns == 0 then
+        task.spawn(function()
+            while StayActiveEnabled do
+                task.wait(math.random() * 50 + 40)
+                if not StayActiveEnabled then break end
+                pcall(function()
+                    Services.VirtualUser:CaptureController()
+                    Services.VirtualUser:ClickButton2(
+                        Vector2.new(),
+                        Services.Workspace.CurrentCamera.CFrame
+                    )
+                end)
+            end
+        end)
+    end
+end
+startStayActive()
+
+-- AFK Bypass tambahan (VirtualUser setiap 10 menit)
+task.spawn(function()
+    while true do
+        if autoFarmRunning then
+            pcall(function()
+                Services.VirtualUser:CaptureController()
+                Services.VirtualUser:ClickButton2(Vector2.new())
+            end)
+        end
+        task.wait(600)
+    end
+end)
+
 local AutoFarmSection = FarmTab:Section({ Title = "Delivery System" })
 
+-- ✅ Desc dikosongkan (stealth)
 local FarmToggle = AutoFarmSection:Toggle({
     Title    = "Auto Delivery",
     Desc     = "",
@@ -1292,7 +1440,7 @@ local FarmToggle = AutoFarmSection:Toggle({
     State    = true,
     Callback = function(state)
         if state then
-            notify("Delivery System", "🚀 Active. Dashboard will appear once onboard.")
+            notify("Delivery System", "🚀 Starting.")
             startFarm()
         else
             notify("Delivery System", "⏹️ Stopped.")
@@ -1313,7 +1461,7 @@ Services.UserInput.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ============================================================================
--- // 7. WEBHOOK TAB
+-- // 9. WEBHOOK TAB
 -- ============================================================================
 local WebhookEnabled         = false
 local WebhookURL             = ""
@@ -1460,10 +1608,6 @@ local function stopWebhookLoop()
     if webhookLoop then task.cancel(webhookLoop); webhookLoop = nil end
 end
 
--- ══════════════════════════════════════════════════════════════════════════
---  WEBHOOK TAB UI
--- ══════════════════════════════════════════════════════════════════════════
-
 WebhookTab:Paragraph({
     Title = "Discord Integration",
     Desc  = "Automatically send delivery session reports to your Discord "
@@ -1548,7 +1692,7 @@ ActionSection:Button({
 })
 
 -- ============================================================================
--- // 8. OPEN BUTTON & FPS TAG
+-- // 10. OPEN BUTTON & FPS TAG
 -- ============================================================================
 Window:EditOpenButton({
     Title           = "Open King Akbar",
@@ -1584,7 +1728,7 @@ task.spawn(function()
 end)
 
 -- ============================================================================
--- // 9. INITIALIZATION + AUTO-START
+-- // 11. INITIALIZATION + AUTO-START
 -- ============================================================================
 Window:SetIconSize(47)
 WindUI:SetTheme("dark")
@@ -1592,15 +1736,12 @@ InfoTab:Select()
 
 WindUI:Notify({
     Title    = "👑 KING AKBAR — DELIVERY SYSTEM",
-    Content  = "Ready. Auto-start engaged — dashboard activates automatically.",
+    Content  = "System loaded successfully.",
     Duration = 5,
 })
 
--- Auto-start setelah 2 detik
 task.wait(2)
-if farmConfig.autoStart then
-    startFarm()
-    pcall(function() FarmToggle:Set(true) end)
-end
+startFarm()
+pcall(function() FarmToggle:Set(true) end)
 
-notify("King Akbar Delivery", "Auto Delivery ready & running. (Stop: RightShift)")
+notify("King Akbar Delivery", "🚛 Ready. (Stop: RightShift)")
