@@ -2,10 +2,11 @@
 ================================================================================
   👑 KING AKBAR - CAR DRIVING INDONESIA
   MODERN DASHBOARD + DELIVERY ASSISTANT + WEBHOOK INTEGRATION
-  VERSION: PROFESSIONAL EDITION — NEW ENGINE
-  Features: Auto Clear Building (Robust), Instant Arrival, Auto Retry
-  PATCH: No Noclip saat masuk truk + Altitude 5000 + Robust Building Clear
-  PATCH: Deskripsi metode dikosongkan (stealth)
+  VERSION: PROFESSIONAL EDITION — SIMPLE MODE
+  Features: Auto Clear Building (Robust 13 target), Simple TP Landing
+  PATCH: Multi-target building clear
+  PATCH: Simple landing — TP 17 studs → diam 45s → drop instan
+  PATCH: Professional Webhook + Custom Target + Censor Identity
 ================================================================================
 --]]
 
@@ -253,7 +254,7 @@ local ServerInfo = InfoTab:Paragraph({
 })
 
 -- ============================================================================
--- // 6. MONEY TRACKER OVERLAY — MINIMALIST DASHBOARD
+-- // 6. MONEY TRACKER OVERLAY
 -- ============================================================================
 local C = {
     BG         = Color3.fromHex("#0A0C10"),
@@ -814,48 +815,106 @@ end)
 -- // 7. AUTO FARM ENGINE
 -- ============================================================================
 
--- ===== AUTO CLEAR BUILDING (ROBUST) =====
-local CLEAR_BUILDING_INDEX = 1155        -- index gedung yang dihapus
-local CLEAR_BUILDING_NAME  = nil         -- opsional: isi nama gedung buat verifikasi
-
-local function clearTargetBuilding()
+-- ===== AUTO CLEAR MULTIPLE BUILDINGS (ROBUST) =====
+local function clearAllTargets()
     local map = Services.Workspace:FindFirstChild("Map")
-    if not map then return false, "Map tidak ditemukan" end
+    if not map then
+        warn("[King Akbar] ❌ Map tidak ditemukan")
+        return
+    end
+
+    local targets = {}
+
+    local function collect(desc, inst)
+        if inst and inst.Parent then
+            table.insert(targets, { desc = desc, inst = inst })
+        else
+            warn("[King Akbar] ⚠️ Not found: " .. desc)
+        end
+    end
+
+    local building = map:FindFirstChild("Building")
+    if building then
+        collect("Building.Factory Truck", building:FindFirstChild("Factory Truck"))
+
+        local wahyudi = building:FindFirstChild("Wahyudi Cirebon")
+        collect("Building.Wahyudi Cirebon", wahyudi)
+
+        if wahyudi then
+            collect("Wahyudi Cirebon.Wahyudi", wahyudi:FindFirstChild("Wahyudi"))
+        end
+
+        local dealer = building:FindFirstChild("Dealer Citrus")
+        if dealer then
+            collect("Dealer Citrus.diler ceri", dealer:FindFirstChild("diler ceri"))
+        end
+
+        local resto = building:FindFirstChild("Resto")
+        collect("Building.Resto", resto)
+
+        if resto then
+            local rf = resto:FindFirstChild("Richeese Factory")
+            if rf then
+                local c = rf:GetChildren()
+                if #c >= 47 then
+                    collect("Richeese Factory[47]", c[47])
+                end
+            end
+        end
+    end
+
+    local stuff = map:FindFirstChild("Stuff")
+    if stuff then
+        local c = stuff:GetChildren()
+        if #c >= 4305 then
+            collect("Stuff[4305]", c[4305])
+        end
+    end
 
     local prop = map:FindFirstChild("Prop")
-    if not prop then return false, "Map.Prop tidak ditemukan" end
-
-    local children = prop:GetChildren()
-    if #children < CLEAR_BUILDING_INDEX then
-        return false, ("Children cuma %d, index %d belum ada")
-            :format(#children, CLEAR_BUILDING_INDEX)
+    if prop then
+        local c = prop:GetChildren()
+        for _, idx in ipairs({ 23, 817, 1154, 1155, 1371 }) do
+            if #c >= idx then
+                collect("Prop[" .. idx .. "]", c[idx])
+            end
+        end
+        collect("Prop.CDIDPROP_CIRCLEB", prop:FindFirstChild("CDIDPROP_CIRCLEB"))
     end
 
-    local building = children[CLEAR_BUILDING_INDEX]
-    if not building then return false, "Building nil" end
-
-    if CLEAR_BUILDING_NAME and building.Name ~= CLEAR_BUILDING_NAME then
-        warn(("[King Akbar] ⚠️ Nama beda! Expected '%s', dapat '%s' — tetap dihapus.")
-            :format(CLEAR_BUILDING_NAME, building.Name))
+    local deleted, skipped = 0, 0
+    for _, entry in ipairs(targets) do
+        if entry.inst and entry.inst.Parent then
+            local ok = pcall(function() entry.inst:Destroy() end)
+            if ok then
+                deleted += 1
+                print(("🏢 [%02d] Deleted: %s"):format(deleted, entry.desc))
+            else
+                skipped += 1
+                warn(("❌ Gagal destroy: %s"):format(entry.desc))
+            end
+        else
+            skipped += 1
+        end
     end
 
-    local name = building.Name
-    building:Destroy()
-    print(("🏢 Building removed [%d]: %s"):format(CLEAR_BUILDING_INDEX, name))
-    return true, name
+    print(("[King Akbar] 🏢 Clear selesai → %d dihapus, %d skip"):format(deleted, skipped))
 end
 
--- Retry sampai ketemu (max ~10 detik)
 task.spawn(function()
-    for attempt = 1, 20 do
-        local ok, info = clearTargetBuilding()
-        if ok then
-            print(("✅ Building cleared on attempt %d"):format(attempt))
-            return
+    for attempt = 1, 30 do
+        local map = Services.Workspace:FindFirstChild("Map")
+        if map then
+            local prop = map:FindFirstChild("Prop")
+            if prop and #prop:GetChildren() >= 1155 then
+                clearAllTargets()
+                return
+            end
         end
         task.wait(0.5)
     end
-    warn("[King Akbar] ❌ Gagal hapus gedung setelah 20 percobaan.")
+    print("[King Akbar] ⏰ Timeout menunggu Map, coba clear paksa...")
+    clearAllTargets()
 end)
 
 -- ===== FARM CONFIG =====
@@ -865,9 +924,12 @@ local farmConfig = {
     TRUCK_SEAT_POSITION  = Vector3.new(35173.47, 134.51, -54683.63),
     STARTER_DISTANCE     = 20,
     MALANG_POLL_INTERVAL = 0.02,
-    highAltitude         = 5000,
-    descendTime          = 45,
 }
+
+-- ===== SIMPLE LANDING CONFIG =====
+local HOVER_HEIGHT  = 17
+local HOVER_TIME    = 45
+local GROUND_MARGIN = 0.3
 
 -- ===== STATE =====
 local autoFarmRunning    = false
@@ -1128,11 +1190,45 @@ local function TriggerSpawnerSmart()
     return false
 end
 
--- ===== KING AKBAR DROP (Instant Arrival) =====
+-- ===== DESTINATION POSITION RESOLVER =====
+local function getDestinationPosition()
+    local ok, pos, marker = pcall(function()
+        local etc = Services.Workspace:FindFirstChild("Etc")
+        if not etc then return nil end
+        local job = etc:FindFirstChild("Job")
+        if not job then return nil end
+        local truck = job:FindFirstChild("Truck")
+        if not truck then return nil end
+        local dest = truck:FindFirstChild("Destination")
+        if not dest then return nil end
+
+        for _, d in ipairs(dest:GetChildren()) do
+            local img = d:FindFirstChild("Image")
+            if img and img:IsA("BasePart") then
+                return img.Position, img
+            end
+        end
+        local first = dest:GetChildren()[1]
+        if first and first:IsA("BasePart") then
+            return first.Position, first
+        end
+        return nil
+    end)
+    if ok and pos then return pos, marker end
+
+    local ok2, wp = pcall(function()
+        return Services.Workspace:WaitForChild("Etc", 5)
+            :WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
+    end)
+    if ok2 and wp then return wp.Position, wp end
+    return nil
+end
+
+-- ===== SIMPLE LANDING — TP 17 → DIAM 45s → DROP INSTAN =====
 local function kingAkbarDrop(vehicle, target)
-    if not vehicle then return end
+    if not vehicle then return false end
     local main = vehicle.PrimaryPart
-    if not main then return end
+    if not main then return false end
 
     local parts, anchored = {}, {}
     for _, p in ipairs(vehicle:GetDescendants()) do
@@ -1156,19 +1252,33 @@ local function kingAkbarDrop(vehicle, target)
         if p ~= main then offsets[p] = mainCF:ToObjectSpace(p.CFrame) end
     end
 
-    local highPos = target + Vector3.new(0, farmConfig.highAltitude, 0)
-    main.CFrame = CFrame.new(highPos) * CFrame.fromEulerAnglesYXZ(0, yRot, 0)
+    local bottomOffset = 0
+    for _, p in ipairs(parts) do
+        local rel = mainCF:ToObjectSpace(p.CFrame)
+        local bottomY = rel.Y - (p.Size.Y / 2)
+        if bottomY < bottomOffset then bottomOffset = bottomY end
+    end
+    bottomOffset = math.abs(bottomOffset)
+
+    local tx, tz = target.X, target.Z
+    local params = RaycastParams.new()
+    params.FilterType = Enum.RaycastFilterType.Exclude
+    params.FilterDescendantsInstances = { LocalPlayer.Character, vehicle }
+    local hit = Services.Workspace:Raycast(
+        Vector3.new(tx, 5000, tz), Vector3.new(0, -10000, 0), params
+    )
+    local groundY = hit and hit.Position.Y or target.Y
+
+    local hoverPos  = Vector3.new(tx, groundY + HOVER_HEIGHT, tz)
+    local groundPos = Vector3.new(tx, groundY + bottomOffset + GROUND_MARGIN, tz)
+
+    print(("[King Akbar] 🎯 TP ke %d studs di atas tanah"):format(HOVER_HEIGHT))
+    main.CFrame = CFrame.new(hoverPos) * CFrame.fromEulerAnglesYXZ(0, yRot, 0)
     for _, p in ipairs(parts) do
         if p ~= main and offsets[p] then
             p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
         end
     end
-
-    local tween = Services.TweenSvc:Create(
-        main,
-        TweenInfo.new(farmConfig.descendTime, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-        { CFrame = CFrame.new(target) * CFrame.fromEulerAnglesYXZ(0, yRot, 0) }
-    )
 
     local conn = Services.RunService.Heartbeat:Connect(function()
         for _, p in ipairs(parts) do
@@ -1178,8 +1288,28 @@ local function kingAkbarDrop(vehicle, target)
         end
     end)
 
-    tween:Play()
-    tween.Completed:Wait()
+    print(("[King Akbar] ⏸️  Diam %d detik di hover..."):format(HOVER_TIME))
+    local t0 = tick()
+    while (tick() - t0) < HOVER_TIME do
+        if not autoFarmRunning then
+            conn:Disconnect()
+            for _, p in ipairs(parts) do
+                if p.Parent then p.Anchored = anchored[p] end
+            end
+            return false
+        end
+        task.wait(0.5)
+    end
+
+    print("[King Akbar] 💥 Drop instan ke tanah")
+    main.CFrame = CFrame.new(groundPos) * CFrame.fromEulerAnglesYXZ(0, yRot, 0)
+    for _, p in ipairs(parts) do
+        if p ~= main and offsets[p] then
+            p.CFrame = main.CFrame:ToWorldSpace(offsets[p])
+        end
+    end
+
+    task.wait(0.3)
     conn:Disconnect()
 
     for _, p in ipairs(parts) do
@@ -1191,6 +1321,10 @@ local function kingAkbarDrop(vehicle, target)
             end)
         end
     end
+
+    task.wait(0.2)
+    print("[King Akbar] ✅ Selesai!")
+    return true
 end
 
 -- ===== ENSURE SEATED =====
@@ -1244,7 +1378,6 @@ local function FarmLoop()
     resetMoneyTracker()
 
     while autoFarmRunning do
-        -- 1. Select Job
         print("🎯 Selecting job...")
         for _ = 1, 10 do
             local jobGui = LocalPlayer:FindFirstChild("PlayerGui"):FindFirstChild("Job")
@@ -1257,7 +1390,6 @@ local function FarmLoop()
         FireJobRemote()
         task.wait(farmConfig.MALANG_POLL_INTERVAL)
 
-        -- 2. Move to Starter
         print("📌 Moving to Starter...")
         EnableCameraFollowLock(Vector3.new(0, 5, 15))
         local root = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -1274,7 +1406,6 @@ local function FarmLoop()
             end
         end
 
-        -- 3. Verify destination
         print("🔍 Checking destination...")
         local destMalang = false
         for _ = 1, 3 do
@@ -1297,12 +1428,17 @@ local function FarmLoop()
                 return
             end
 
-            -- 4. Instant Arrival
-            print("🚀 Instant arrival (altitude " .. farmConfig.highAltitude .. ")...")
-            local destPart = Services.Workspace
-                :WaitForChild("Etc", 5):WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
-            local destPos  = destPart.Position
+            print("🚀 Instant arrival (simple mode)...")
+            local destPos, marker = getDestinationPosition()
 
+            if not destPos then
+                warn("[King Akbar] ⚠️ Destination tidak ditemukan, fallback ke Waypoint")
+                local wp = Services.Workspace
+                    :WaitForChild("Etc", 5):WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
+                destPos = wp.Position
+            end
+
+            print(("🎯 Target: (%.1f, %.1f, %.1f)"):format(destPos.X, destPos.Y, destPos.Z))
             kingAkbarDrop(truck, destPos)
 
             if not autoFarmRunning then
@@ -1311,7 +1447,6 @@ local function FarmLoop()
                 return
             end
 
-            -- 5. Update stats on delivery
             Stats.deliveries += 1
             local moneyNow    = getMoney()
             local delivProfit = moneyNow - lastDelivMoney
@@ -1320,28 +1455,7 @@ local function FarmLoop()
             table.insert(delivHistory, math.max(0, delivProfit))
             updateDelivBars()
 
-            -- 6. Wait for destination change (next delivery)
-            print("⏳ Waiting for destination change...")
-            local lastDestPos = destPos
-            local startWait   = tick()
-            while (tick() - startWait) < 60 do
-                if not autoFarmRunning then
-                    TurnOnCollisionIfNeeded()
-                    DisableCameraFollowLock()
-                    return
-                end
-                task.wait(1)
-                local ok, newDest = pcall(function()
-                    return Services.Workspace
-                        :WaitForChild("Etc", 5):WaitForChild("Waypoint", 5):WaitForChild("Waypoint", 5)
-                end)
-                if ok and newDest then
-                    if (newDest.Position - lastDestPos).Magnitude > 5 then
-                        print("✅ Destination changed! Reward received.")
-                        break
-                    end
-                end
-            end
+            task.wait(1)
 
             TurnOnCollisionIfNeeded()
             DisableCameraFollowLock()
@@ -1417,7 +1531,6 @@ local function startStayActive()
 end
 startStayActive()
 
--- AFK Bypass tambahan (VirtualUser setiap 10 menit)
 task.spawn(function()
     while true do
         if autoFarmRunning then
@@ -1432,7 +1545,6 @@ end)
 
 local AutoFarmSection = FarmTab:Section({ Title = "Delivery System" })
 
--- ✅ Desc dikosongkan (stealth)
 local FarmToggle = AutoFarmSection:Toggle({
     Title    = "Auto Delivery",
     Desc     = "",
@@ -1449,7 +1561,6 @@ local FarmToggle = AutoFarmSection:Toggle({
     end
 })
 
--- Stop via RightShift
 Services.UserInput.InputBegan:Connect(function(input, gpe)
     if gpe then return end
     if input.KeyCode == Enum.KeyCode.RightShift then
@@ -1461,13 +1572,68 @@ Services.UserInput.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ============================================================================
--- // 9. WEBHOOK TAB
+-- // 9. WEBHOOK TAB (PROFESSIONAL EDITION — FINAL)
 -- ============================================================================
 local WebhookEnabled         = false
 local WebhookURL             = ""
 local WebhookIntervalMinutes = 5
+local CensorName             = false
+local TargetProfit           = 5000000
 local webhookLoop            = nil
 
+-- ===== HELPER: CENSOR =====
+local function censorText(txt)
+    if not txt or txt == "" then return "Anonymous" end
+    return (txt:gsub("%S+", function(word)
+        if #word <= 1 then return word end
+        return word:sub(1,1) .. string.rep("*", #word - 1)
+    end))
+end
+
+local function applyIdentity(value)
+    if not value or value == "" then return "Private" end
+    return CensorName and censorText(value) or value
+end
+
+-- ===== PROGRESS BAR =====
+local function makeProgressBar(pct, length)
+    length = length or 14
+    pct = math.clamp(pct, 0, 1)
+    local filled = math.floor(pct * length + 0.5)
+    local empty  = length - filled
+    return string.rep("█", filled) .. string.rep("░", empty)
+end
+
+-- ===== FORMAT SHORT MONEY =====
+local function formatShortMoney(n)
+    n = math.abs(n or 0)
+    if n >= 1e9 then return string.format("Rp %.2fB", n / 1e9)
+    elseif n >= 1e6 then return string.format("Rp %.2fM", n / 1e6)
+    elseif n >= 1e3 then return string.format("Rp %.1fK", n / 1e3)
+    else return string.format("Rp %d", n) end
+end
+
+-- ===== PARSE TARGET INPUT =====
+local function parseTargetInput(str)
+    if not str then return nil end
+    str = tostring(str):lower():gsub("%s", ""):gsub("%.", ""):gsub(",", "")
+    local num, suffix = str:match("^(%d+)(%a*)$")
+    if not num then return nil end
+    num = tonumber(num)
+    if not num or num <= 0 then return nil end
+
+    if suffix == "k" or suffix == "rb" then
+        return num * 1000
+    elseif suffix == "m" or suffix == "jt" then
+        return num * 1000000
+    elseif suffix == "b" or suffix == "miliar" then
+        return num * 1000000000
+    else
+        return num
+    end
+end
+
+-- ===== BUILD EMBED =====
 local function buildReportEmbed()
     local profit     = Stats.moneyNow - Stats.moneyBefore
     local sessionSec = math.max(Stats.farmTime, 1)
@@ -1476,79 +1642,120 @@ local function buildReportEmbed()
     local perDeliv   = Stats.deliveries > 0 and math.floor(profit / Stats.deliveries) or 0
     local delPerHour = math.floor((Stats.deliveries / sessionSec) * 3600)
 
-    local statusIcon = profit > 0 and "🟢" or (profit < 0 and "🔴" or "🟡")
-    local profitSign = profit >= 0 and "+" or "-"
+    local targetPct  = math.clamp(profit / TargetProfit, 0, 1)
+    local targetBar  = makeProgressBar(targetPct, 14)
+
+    local embedColor = profit > 0 and 0x10B981
+                    or (profit < 0 and 0xEF4444 or 0xF59E0B)
+
+    local statusLine
+    if targetPct >= 1 then
+        statusLine = "🏆 **TARGET REACHED — SESSION COMPLETE**"
+    elseif profit > 0 then
+        statusLine = "🟢 **PROFITABLE SESSION**"
+    elseif profit < 0 then
+        statusLine = "🔴 **NEGATIVE SESSION**"
+    else
+        statusLine = "🟡 **IDLE — NO ACTIVITY**"
+    end
+
+    local displayName = applyIdentity(LocalPlayer.Name)
+    local serverId    = game.JobId ~= "" and game.JobId:sub(1, 12) .. "…" or "Private"
+    local displaySrv  = CensorName and "Private Server" or serverId
 
     return {
         author = {
-            name     = "King Akbar Hub",
+            name     = "KING AKBAR HUB  •  DELIVERY SYSTEM",
             icon_url = "https://cdn-icons-png.flaticon.com/512/1077/1077012.png",
         },
-        title       = "Delivery Session Report",
+        title       = "📊  Session Performance Report",
         description = string.format(
-            "%s **Session Status:** %s\n"
-            .. "**Account:** `%s`\n"
-            .. "**Server:** `%s`",
-            statusIcon,
-            profit > 0 and "Profitable" or (profit < 0 and "Loss" or "Idle"),
-            LocalPlayer.Name,
-            game.JobId ~= "" and game.JobId:sub(1, 12).."..." or "Private"
+            "%s\n\u200b\n"
+            .. "👤  **Account**  `%s`\n"
+            .. "🌐  **Server**   `%s`\n"
+            .. "🕒  **Reported** <t:%d:R>"
+            .. (CensorName and "\n\n> 🔒 *Identity masked by user setting*" or ""),
+            statusLine,
+            displayName,
+            displaySrv,
+            os.time()
         ),
-        color = profit > 0 and 0x10B981
-             or (profit < 0 and 0xEF4444 or 0xF59E0B),
+        color = embedColor,
         fields = {
             {
-                name   = "💰  Wallet",
+                name   = "💰  WALLET",
                 value  = string.format(
-                    "```yaml\nStarting : %s\nCurrent  : %s\n```",
+                    "```ml\nStart  →  %s\nNow    →  %s\n```",
                     formatMoney(Stats.moneyBefore),
                     formatMoney(Stats.moneyNow)
                 ),
-                inline = false,
-            },
-            {
-                name   = "📈  Profit",
-                value  = string.format("```diff\n%s%s\n```", profitSign, formatMoney(profit)),
                 inline = true,
             },
             {
-                name   = "⏱️  Session",
-                value  = string.format("```yaml\n%s\n```", formatTime(sessionSec)),
-                inline = true,
-            },
-            {
-                name   = "🚚  Deliveries",
-                value  = string.format("```yaml\n%d completed\n```", Stats.deliveries),
-                inline = true,
-            },
-            {
-                name   = "⚡  Performance",
+                name   = "📈  NET PROFIT",
                 value  = string.format(
-                    "```yaml\nIncome/hr : %s\nDeliver/hr: %d\n```",
-                    formatMoney(perHour),
-                    delPerHour
+                    "```diff\n%s %s\n```",
+                    profit >= 0 and "+" or "-",
+                    formatMoney(math.abs(profit))
                 ),
                 inline = true,
             },
+            { name = "\u200b", value = "\u200b", inline = true },
             {
-                name   = "📦  Average",
+                name   = string.format("🎯  PROGRESS TO %s TARGET", formatShortMoney(TargetProfit)),
                 value  = string.format(
-                    "```yaml\nPer delivery: %s\n```",
-                    Stats.deliveries > 0 and formatMoney(perDeliv) or "—"
+                    "`%s`  **%.1f%%**  ·  %s / %s",
+                    targetBar,
+                    targetPct * 100,
+                    formatShortMoney(profit),
+                    formatShortMoney(TargetProfit)
                 ),
                 inline = false,
+            },
+            {
+                name   = "🚚  DELIVERIES",
+                value  = string.format("```ml\nTotal     →  %d\nPer Hour  →  %d\n```",
+                    Stats.deliveries, delPerHour),
+                inline = true,
+            },
+            {
+                name   = "⏱️  SESSION TIME",
+                value  = string.format("```ml\nElapsed  →  %s\n```",
+                    formatTime(sessionSec)),
+                inline = true,
+            },
+            {
+                name   = "⚡  INCOME / HOUR",
+                value  = string.format("```ml\nRate     →  %s\n```",
+                    formatMoney(perHour)),
+                inline = true,
+            },
+            {
+                name   = "📦  AVG / DELIVERY",
+                value  = string.format("```ml\nYield    →  %s\n```",
+                    Stats.deliveries > 0 and formatMoney(perDeliv) or "—"),
+                inline = true,
+            },
+            {
+                name   = "🏆  SESSION MODE",
+                value  = string.format("```ml\nMode     →  %s\n```",
+                    targetPct >= 1 and "Target Reached"
+                    or (profit > 0 and "Profitable"
+                    or (profit < 0 and "Loss" or "Idle"))),
+                inline = true,
             },
         },
         thumbnail = {
             url = "https://cdn-icons-png.flaticon.com/512/9337/9337597.png",
         },
         footer = {
-            text = "King Akbar Hub  •  Delivery System  •  " .. os.date("%d %b %Y  •  %H:%M:%S"),
+            text = "King Akbar Hub  •  Car Driving Indonesia  •  Professional Delivery System",
         },
         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
     }
 end
 
+-- ===== SEND WEBHOOK =====
 local function sendWebhook()
     local url = WebhookURL
     if url == "" then
@@ -1557,7 +1764,7 @@ local function sendWebhook()
     end
 
     local payload = {
-        username   = "King Akbar",
+        username   = "King Akbar  •  Delivery Report",
         avatar_url = "https://cdn-icons-png.flaticon.com/512/1077/1077012.png",
         embeds     = { buildReportEmbed() },
     }
@@ -1592,6 +1799,7 @@ local function sendWebhook()
     end
 end
 
+-- ===== LOOP =====
 local function startWebhookLoop()
     if webhookLoop then task.cancel(webhookLoop) end
     if not WebhookEnabled or WebhookURL == "" then return end
@@ -1608,11 +1816,12 @@ local function stopWebhookLoop()
     if webhookLoop then task.cancel(webhookLoop); webhookLoop = nil end
 end
 
+-- ===== UI =====
 WebhookTab:Paragraph({
-    Title = "Discord Integration",
-    Desc  = "Automatically send delivery session reports to your Discord "
-         .. "channel. Reports include wallet balance, profit, session time, "
-         .. "and performance metrics.",
+    Title = "Discord Integration  ·  Pro Edition",
+    Desc  = "Kirim laporan sesi delivery otomatis dengan tampilan profesional: "
+         .. "progress bar dinamis, net profit, income/hour, dan opsi sensor "
+         .. "identitas. Target profit bisa dikustomisasi.",
     Image = "rbxassetid://107726435417936",
 })
 
@@ -1620,7 +1829,7 @@ local ConfigSection = WebhookTab:Section({ Title = "Configuration" })
 
 ConfigSection:Toggle({
     Title    = "Auto Send Reports",
-    Desc     = "Automatically send report at the configured interval.",
+    Desc     = "Kirim laporan otomatis sesuai interval yang diatur.",
     Icon     = "webhook",
     State    = false,
     Callback = function(state)
@@ -1635,9 +1844,22 @@ ConfigSection:Toggle({
     end
 })
 
+ConfigSection:Toggle({
+    Title    = "🔒 Censor Identity",
+    Desc     = "Sensor nama akun (K*** A****) dan sembunyikan Job ID di laporan.",
+    Icon     = "shield",
+    State    = false,
+    Callback = function(state)
+        CensorName = state
+        notify("Webhook", state
+            and "🔒 Identitas akan disensor di laporan."
+            or  "🔓 Identitas ditampilkan normal.")
+    end
+})
+
 ConfigSection:Input({
     Title       = "Webhook URL",
-    Desc        = "Discord webhook endpoint for report delivery.",
+    Desc        = "Discord webhook endpoint untuk pengiriman laporan.",
     Icon        = "link",
     Value       = "",
     Placeholder = "https://discord.com/api/webhooks/...",
@@ -1649,7 +1871,7 @@ ConfigSection:Input({
 
 ConfigSection:Input({
     Title       = "Interval (minutes)",
-    Desc        = "How often reports are sent. Minimum 1 minute.",
+    Desc        = "Interval pengiriman laporan. Minimum 1 menit.",
     Icon        = "clock",
     Value       = tostring(WebhookIntervalMinutes),
     Placeholder = "5",
@@ -1662,15 +1884,35 @@ ConfigSection:Input({
     end
 })
 
+local TargetSection = WebhookTab:Section({ Title = "Progress Target" })
+
+TargetSection:Input({
+    Title       = "🎯 Target Profit",
+    Desc        = "Format: 5000000  •  5m (juta)  •  500k (ribu)  •  10jt  •  1b. "
+               .. "Progress bar di laporan akan mengikuti target ini.",
+    Icon        = "target",
+    Value       = "5m",
+    Placeholder = "5m",
+    Callback    = function(val)
+        local parsed = parseTargetInput(val)
+        if parsed and parsed > 0 then
+            TargetProfit = parsed
+            notify("Target", "🎯 Target diset: " .. formatShortMoney(TargetProfit))
+        else
+            notify("Target", "❌ Format tidak valid. Contoh: 5m / 500k / 5000000")
+        end
+    end
+})
+
 local ActionSection = WebhookTab:Section({ Title = "Actions" })
 
 ActionSection:Button({
     Title    = "Send Test Report",
-    Desc     = "Send a report immediately to verify your webhook.",
+    Desc     = "Kirim laporan sekarang untuk memverifikasi webhook.",
     Icon     = "send",
     Callback = function()
         if WebhookURL == "" then
-            notify("Webhook", "❌ Please enter a webhook URL first.")
+            notify("Webhook", "❌ Masukkan Webhook URL terlebih dahulu.")
             return
         end
         sendWebhook()
@@ -1679,7 +1921,7 @@ ActionSection:Button({
 
 ActionSection:Button({
     Title    = "Reset Session Stats",
-    Desc     = "Reset all counters and balance tracking to zero.",
+    Desc     = "Reset semua counter dan tracking balance ke nol.",
     Icon     = "rotate-ccw",
     Callback = function()
         Stats.moneyBefore = getMoney()
@@ -1736,7 +1978,7 @@ InfoTab:Select()
 
 WindUI:Notify({
     Title    = "👑 KING AKBAR — DELIVERY SYSTEM",
-    Content  = "System loaded successfully.",
+    Content  = "Simple mode loaded successfully.",
     Duration = 5,
 })
 
