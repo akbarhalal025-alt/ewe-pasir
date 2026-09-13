@@ -2,11 +2,11 @@
 ================================================================================
   👑 KING AKBAR - CAR DRIVING INDONESIA
   MODERN DASHBOARD + DELIVERY ASSISTANT + WEBHOOK INTEGRATION
-  VERSION: PROFESSIONAL EDITION — SIMPLE MODE
+  VERSION: PROFESSIONAL PREMIUM EDITION
   Features: Auto Clear Building (Robust 13 target), Simple TP Landing
   PATCH: Multi-target building clear
   PATCH: Simple landing — TP 17 studs → diam 45s → drop instan
-  PATCH: Professional Webhook + Custom Target + Censor Identity
+  PATCH: Professional premium webhook + name censor + configurable progress target
 ================================================================================
 --]]
 
@@ -64,7 +64,7 @@ local IsMobile = Services.UserInput.TouchEnabled
     and not Services.UserInput.MouseEnabled
 
 -- ============================================================================
--- // 1.5 GLOBAL STATS
+-- // 1.5 GLOBAL STATS + SETTINGS
 -- ============================================================================
 local Stats = {
     moneyBefore = 0,
@@ -72,6 +72,12 @@ local Stats = {
     deliveries  = 0,
     farmTime    = 0,
     startTime   = os.time(),
+}
+
+local Settings = {
+    ProgressTarget = 5000000,
+    CensorName     = false,
+    CensoredName   = "",
 }
 
 -- ============================================================================
@@ -391,7 +397,7 @@ local progFill = mkFr(progTrack, {
 
 local MT_progLabel = mkLb(heroCard, {
     Size=UDim2.new(1,-44,0,20), Position=UDim2.new(0,22,0,145),
-    Text="SESSION GAIN: Rp. 0  —  TARGET Rp. 5.000.000",
+    Text="SESSION GAIN: Rp. 0  —  TARGET Rp. 5,000,000",
     TextColor3=C.TEXT_SUB, Font=Enum.Font.GothamMedium, TextSize=11,
     TextXAlignment=Enum.TextXAlignment.Left,
 })
@@ -708,6 +714,24 @@ local function formatTime(seconds)
     return string.format("%02d:%02d", m, s)
 end
 
+local function refreshProgressBar()
+    local income = math.max(0, Stats.moneyNow - Stats.moneyBefore)
+    local target = math.max(1, Settings.ProgressTarget)
+    local pct    = math.clamp(income / target, 0, 1)
+
+    Services.TweenSvc:Create(progFill, TweenInfo.new(0.55), {
+        Size = UDim2.new(pct, 0, 1, 0)
+    }):Play()
+
+    MT_progLabel.Text = string.format(
+        "SESSION GAIN: +%s  (%s%% of %s target)",
+        formatMoney(income),
+        string.format("%.1f", pct * 100),
+        formatMoney(target)
+    )
+    MT_progLabel.TextColor3 = income > 0 and C.GREEN or C.TEXT_SUB
+end
+
 local function resetMoneyTracker()
     Stats.moneyBefore    = getMoney()
     Stats.moneyNow       = Stats.moneyBefore
@@ -727,9 +751,7 @@ local function resetMoneyTracker()
     MT_valDelPerHour.Text = "0 / H"
     MT_delivCount.Text    = "0"
     MT_uptimeVal.Text     = "00:00"
-    MT_progLabel.Text     = "SESSION GAIN: Rp. 0  —  TARGET Rp. 5.000.000"
-    MT_progLabel.TextColor3 = C.TEXT_SUB
-    Services.TweenSvc:Create(progFill,    TweenInfo.new(0.3), {Size=UDim2.new(0,0,1,0)}):Play()
+    refreshProgressBar()
     Services.TweenSvc:Create(elapsedFill, TweenInfo.new(0.3), {Size=UDim2.new(0,0,1,0)}):Play()
     updateDelivBars()
 end
@@ -794,21 +816,11 @@ Services.RunService.Heartbeat:Connect(function(dt)
             MT_valDelPerHour.Text  = tostring(delPerHour).." / H"
             if perDeliv > bestDelivProfit then bestDelivProfit = perDeliv end
         end
-
-        local pct = math.clamp(income / 5000000, 0, 1)
-        Services.TweenSvc:Create(progFill, TweenInfo.new(0.55), {
-            Size = UDim2.new(pct, 0, 1, 0)
-        }):Play()
-
-        MT_progLabel.Text = string.format(
-            "SESSION GAIN: +%s  (%s%% of 5M target)",
-            formatMoney(income):gsub("Rp%. ","Rp. "),
-            string.format("%.1f", pct*100)
-        )
-        MT_progLabel.TextColor3 = C.GREEN
     else
         MT_valProfit.TextColor3 = C.TEXT_DIM
     end
+
+    refreshProgressBar()
 end)
 
 -- ============================================================================
@@ -1495,7 +1507,6 @@ end
 -- // 8. FARM TAB UI
 -- ============================================================================
 
--- ANTI AFK
 local StayActiveEnabled = false
 local disabledIdledConns = {}
 
@@ -1572,68 +1583,52 @@ Services.UserInput.InputBegan:Connect(function(input, gpe)
 end)
 
 -- ============================================================================
--- // 9. WEBHOOK TAB (PROFESSIONAL EDITION — FINAL)
+-- // 9. WEBHOOK TAB — PROFESSIONAL PREMIUM EDITION
 -- ============================================================================
 local WebhookEnabled         = false
 local WebhookURL             = ""
 local WebhookIntervalMinutes = 5
-local CensorName             = false
-local TargetProfit           = 5000000
 local webhookLoop            = nil
 
--- ===== HELPER: CENSOR =====
-local function censorText(txt)
-    if not txt or txt == "" then return "Anonymous" end
-    return (txt:gsub("%S+", function(word)
-        if #word <= 1 then return word end
-        return word:sub(1,1) .. string.rep("*", #word - 1)
-    end))
-end
-
-local function applyIdentity(value)
-    if not value or value == "" then return "Private" end
-    return CensorName and censorText(value) or value
-end
-
--- ===== PROGRESS BAR =====
-local function makeProgressBar(pct, length)
-    length = length or 14
-    pct = math.clamp(pct, 0, 1)
-    local filled = math.floor(pct * length + 0.5)
-    local empty  = length - filled
-    return string.rep("█", filled) .. string.rep("░", empty)
-end
-
--- ===== FORMAT SHORT MONEY =====
-local function formatShortMoney(n)
-    n = math.abs(n or 0)
-    if n >= 1e9 then return string.format("Rp %.2fB", n / 1e9)
-    elseif n >= 1e6 then return string.format("Rp %.2fM", n / 1e6)
-    elseif n >= 1e3 then return string.format("Rp %.1fK", n / 1e3)
-    else return string.format("Rp %d", n) end
-end
-
--- ===== PARSE TARGET INPUT =====
-local function parseTargetInput(str)
-    if not str then return nil end
-    str = tostring(str):lower():gsub("%s", ""):gsub("%.", ""):gsub(",", "")
-    local num, suffix = str:match("^(%d+)(%a*)$")
-    if not num then return nil end
-    num = tonumber(num)
-    if not num or num <= 0 then return nil end
-
-    if suffix == "k" or suffix == "rb" then
-        return num * 1000
-    elseif suffix == "m" or suffix == "jt" then
-        return num * 1000000
-    elseif suffix == "b" or suffix == "miliar" then
-        return num * 1000000000
-    else
-        return num
+-- ===== Helper: censor / mask nama player =====
+local function getDisplayName()
+    if not Settings.CensorName then
+        return LocalPlayer.Name
     end
+    if Settings.CensoredName and Settings.CensoredName ~= "" then
+        return Settings.CensoredName
+    end
+    local n = LocalPlayer.Name
+    if #n <= 2 then return "***" end
+    return n:sub(1, 2) .. string.rep("*", math.max(3, #n - 2))
 end
 
--- ===== BUILD EMBED =====
+local function getServerId()
+    if game.JobId == "" then return "Private Server" end
+    return game.JobId:sub(1, 8) .. "…"
+end
+
+-- ===== Helper: format angka tanpa prefix =====
+local function rawMoney(n)
+    local s = tostring(math.floor(math.abs(n)))
+    local result, count = "", 0
+    for i = #s, 1, -1 do
+        count  = count + 1
+        result = s:sub(i, i) .. result
+        if count % 3 == 0 and i ~= 1 then result = "," .. result end
+    end
+    return result
+end
+
+-- ===== Helper: progress bar presisi =====
+local function makeBar(pct, length)
+    length = length or 12
+    local filled = math.floor(pct * length + 0.5)
+    filled = math.clamp(filled, 0, length)
+    return string.rep("▰", filled) .. string.rep("▱", length - filled)
+end
+
+-- ===== Build embed profesional =====
 local function buildReportEmbed()
     local profit     = Stats.moneyNow - Stats.moneyBefore
     local sessionSec = math.max(Stats.farmTime, 1)
@@ -1642,129 +1637,118 @@ local function buildReportEmbed()
     local perDeliv   = Stats.deliveries > 0 and math.floor(profit / Stats.deliveries) or 0
     local delPerHour = math.floor((Stats.deliveries / sessionSec) * 3600)
 
-    local targetPct  = math.clamp(profit / TargetProfit, 0, 1)
-    local targetBar  = makeProgressBar(targetPct, 14)
+    local target     = math.max(1, Settings.ProgressTarget)
+    local progress   = math.clamp(profit / target, 0, 1)
+    local progressPct= progress * 100
+    local bar        = makeBar(progress, 14)
 
-    local embedColor = profit > 0 and 0x10B981
-                    or (profit < 0 and 0xEF4444 or 0xF59E0B)
-
-    local statusLine
-    if targetPct >= 1 then
-        statusLine = "🏆 **TARGET REACHED — SESSION COMPLETE**"
-    elseif profit > 0 then
-        statusLine = "🟢 **PROFITABLE SESSION**"
+    local statusEmoji, statusLabel, embedColor
+    if profit > 0 then
+        statusEmoji, statusLabel, embedColor = "🟢", "ACTIVE",  0x10B981
     elseif profit < 0 then
-        statusLine = "🔴 **NEGATIVE SESSION**"
+        statusEmoji, statusLabel, embedColor = "🔴", "LOSS",    0xEF4444
     else
-        statusLine = "🟡 **IDLE — NO ACTIVITY**"
+        statusEmoji, statusLabel, embedColor = "🟡", "IDLE",    0xF59E0B
     end
 
-    local displayName = applyIdentity(LocalPlayer.Name)
-    local serverId    = game.JobId ~= "" and game.JobId:sub(1, 12) .. "…" or "Private"
-    local displaySrv  = CensorName and "Private Server" or serverId
+    local profitSign = profit >= 0 and "+" or "−"
 
     return {
         author = {
-            name     = "KING AKBAR HUB  •  DELIVERY SYSTEM",
+            name     = "👑  KING AKBAR HUB",
             icon_url = "https://cdn-icons-png.flaticon.com/512/1077/1077012.png",
         },
-        title       = "📊  Session Performance Report",
+        title       = "📦  Delivery Session Report",
         description = string.format(
-            "%s\n\u200b\n"
-            .. "👤  **Account**  `%s`\n"
-            .. "🌐  **Server**   `%s`\n"
-            .. "🕒  **Reported** <t:%d:R>"
-            .. (CensorName and "\n\n> 🔒 *Identity masked by user setting*" or ""),
-            statusLine,
-            displayName,
-            displaySrv,
-            os.time()
+            "%s  **%s**   •   `%s`\n"
+            .. "👤  `%s`\n"
+            .. "🌐  `%s`\n"
+            .. "🕒  `%s`",
+            statusEmoji,
+            statusLabel,
+            "v1.0",
+            getDisplayName(),
+            getServerId(),
+            os.date("%d %b %Y • %H:%M")
         ),
-        color = embedColor,
+        color  = embedColor,
         fields = {
             {
                 name   = "💰  WALLET",
                 value  = string.format(
-                    "```ml\nStart  →  %s\nNow    →  %s\n```",
-                    formatMoney(Stats.moneyBefore),
-                    formatMoney(Stats.moneyNow)
-                ),
-                inline = true,
-            },
-            {
-                name   = "📈  NET PROFIT",
-                value  = string.format(
-                    "```diff\n%s %s\n```",
-                    profit >= 0 and "+" or "-",
-                    formatMoney(math.abs(profit))
-                ),
-                inline = true,
-            },
-            { name = "\u200b", value = "\u200b", inline = true },
-            {
-                name   = string.format("🎯  PROGRESS TO %s TARGET", formatShortMoney(TargetProfit)),
-                value  = string.format(
-                    "`%s`  **%.1f%%**  ·  %s / %s",
-                    targetBar,
-                    targetPct * 100,
-                    formatShortMoney(profit),
-                    formatShortMoney(TargetProfit)
+                    "```ansi\n"
+                    .. "\u{1b}[2;37mStarting\u{1b}[0m  %s\n"
+                    .. "\u{1b}[1;37mCurrent \u{1b}[0m  %s\n"
+                    .. "```",
+                    "Rp " .. rawMoney(Stats.moneyBefore),
+                    "Rp " .. rawMoney(Stats.moneyNow)
                 ),
                 inline = false,
             },
             {
-                name   = "🚚  DELIVERIES",
-                value  = string.format("```ml\nTotal     →  %d\nPer Hour  →  %d\n```",
-                    Stats.deliveries, delPerHour),
+                name   = "📈  NET PROFIT",
+                value  = string.format("```diff\n%s Rp %s\n```",
+                    profitSign, rawMoney(profit)),
                 inline = true,
             },
             {
-                name   = "⏱️  SESSION TIME",
-                value  = string.format("```ml\nElapsed  →  %s\n```",
-                    formatTime(sessionSec)),
+                name   = "⏱️  SESSION",
+                value  = string.format("```yaml\n%s\n```", formatTime(sessionSec)),
+                inline = true,
+            },
+            {
+                name   = "🚚  DELIVERIES",
+                value  = string.format("```yaml\n%d trip\n```", Stats.deliveries),
                 inline = true,
             },
             {
                 name   = "⚡  INCOME / HOUR",
-                value  = string.format("```ml\nRate     →  %s\n```",
-                    formatMoney(perHour)),
+                value  = string.format("```yaml\nRp %s\n```", rawMoney(perHour)),
                 inline = true,
             },
             {
-                name   = "📦  AVG / DELIVERY",
-                value  = string.format("```ml\nYield    →  %s\n```",
-                    Stats.deliveries > 0 and formatMoney(perDeliv) or "—"),
+                name   = "📊  TRIP / HOUR",
+                value  = string.format("```yaml\n%d / jam\n```", delPerHour),
                 inline = true,
             },
             {
-                name   = "🏆  SESSION MODE",
-                value  = string.format("```ml\nMode     →  %s\n```",
-                    targetPct >= 1 and "Target Reached"
-                    or (profit > 0 and "Profitable"
-                    or (profit < 0 and "Loss" or "Idle"))),
+                name   = "📦  AVG / TRIP",
+                value  = string.format("```yaml\n%s\n```",
+                    Stats.deliveries > 0 and ("Rp " .. rawMoney(perDeliv)) or "—"),
                 inline = true,
+            },
+            {
+                name   = "🎯  PROGRESS TARGET",
+                value  = string.format(
+                    "%s  **%.1f%%**\n"
+                    .. "`Rp %s`  /  `Rp %s`",
+                    bar,
+                    progressPct,
+                    rawMoney(profit),
+                    rawMoney(target)
+                ),
+                inline = false,
             },
         },
         thumbnail = {
             url = "https://cdn-icons-png.flaticon.com/512/9337/9337597.png",
         },
         footer = {
-            text = "King Akbar Hub  •  Car Driving Indonesia  •  Professional Delivery System",
+            text = "King Akbar Hub  •  Car Driving Indonesia  •  Powered by King Vypers",
         },
         timestamp = os.date("!%Y-%m-%dT%H:%M:%SZ"),
     }
 end
 
--- ===== SEND WEBHOOK =====
 local function sendWebhook()
     local url = WebhookURL
     if url == "" then
         notify("Webhook", "❌ Webhook URL is empty!")
-        return
+        return false
     end
 
     local payload = {
-        username   = "King Akbar  •  Delivery Report",
+        username   = "👑 King Akbar",
         avatar_url = "https://cdn-icons-png.flaticon.com/512/1077/1077012.png",
         embeds     = { buildReportEmbed() },
     }
@@ -1797,9 +1781,9 @@ local function sendWebhook()
     else
         notify("Webhook", "❌ Delivery failed. Check URL or connection.")
     end
+    return success
 end
 
--- ===== LOOP =====
 local function startWebhookLoop()
     if webhookLoop then task.cancel(webhookLoop) end
     if not WebhookEnabled or WebhookURL == "" then return end
@@ -1816,20 +1800,19 @@ local function stopWebhookLoop()
     if webhookLoop then task.cancel(webhookLoop); webhookLoop = nil end
 end
 
--- ===== UI =====
 WebhookTab:Paragraph({
-    Title = "Discord Integration  ·  Pro Edition",
-    Desc  = "Kirim laporan sesi delivery otomatis dengan tampilan profesional: "
-         .. "progress bar dinamis, net profit, income/hour, dan opsi sensor "
-         .. "identitas. Target profit bisa dikustomisasi.",
+    Title = "Discord Integration",
+    Desc  = "Kirim laporan sesi delivery profesional ke Discord secara otomatis. "
+         .. "Menampilkan wallet, profit, performa, dan progress target dengan layout rapi.",
     Image = "rbxassetid://107726435417936",
 })
 
+-- ===== SECTION: CONFIGURATION =====
 local ConfigSection = WebhookTab:Section({ Title = "Configuration" })
 
 ConfigSection:Toggle({
     Title    = "Auto Send Reports",
-    Desc     = "Kirim laporan otomatis sesuai interval yang diatur.",
+    Desc     = "Kirim laporan otomatis di interval yang ditentukan.",
     Icon     = "webhook",
     State    = false,
     Callback = function(state)
@@ -1844,22 +1827,9 @@ ConfigSection:Toggle({
     end
 })
 
-ConfigSection:Toggle({
-    Title    = "🔒 Censor Identity",
-    Desc     = "Sensor nama akun (K*** A****) dan sembunyikan Job ID di laporan.",
-    Icon     = "shield",
-    State    = false,
-    Callback = function(state)
-        CensorName = state
-        notify("Webhook", state
-            and "🔒 Identitas akan disensor di laporan."
-            or  "🔓 Identitas ditampilkan normal.")
-    end
-})
-
 ConfigSection:Input({
     Title       = "Webhook URL",
-    Desc        = "Discord webhook endpoint untuk pengiriman laporan.",
+    Desc        = "Endpoint Discord webhook untuk pengiriman laporan.",
     Icon        = "link",
     Value       = "",
     Placeholder = "https://discord.com/api/webhooks/...",
@@ -1871,7 +1841,7 @@ ConfigSection:Input({
 
 ConfigSection:Input({
     Title       = "Interval (minutes)",
-    Desc        = "Interval pengiriman laporan. Minimum 1 menit.",
+    Desc        = "Seberapa sering laporan dikirim. Minimal 1 menit.",
     Icon        = "clock",
     Value       = tostring(WebhookIntervalMinutes),
     Placeholder = "5",
@@ -1884,35 +1854,58 @@ ConfigSection:Input({
     end
 })
 
-local TargetSection = WebhookTab:Section({ Title = "Progress Target" })
+-- ===== SECTION: PROGRESS & PRIVACY =====
+local ProgressSection = WebhookTab:Section({ Title = "Progress & Privacy" })
 
-TargetSection:Input({
-    Title       = "🎯 Target Profit",
-    Desc        = "Format: 5000000  •  5m (juta)  •  500k (ribu)  •  10jt  •  1b. "
-               .. "Progress bar di laporan akan mengikuti target ini.",
+ProgressSection:Input({
+    Title       = "Progress Target",
+    Desc        = "Target profit untuk progress bar overlay & webhook.",
     Icon        = "target",
-    Value       = "5m",
-    Placeholder = "5m",
+    Value       = tostring(Settings.ProgressTarget),
+    Placeholder = "5000000",
     Callback    = function(val)
-        local parsed = parseTargetInput(val)
-        if parsed and parsed > 0 then
-            TargetProfit = parsed
-            notify("Target", "🎯 Target diset: " .. formatShortMoney(TargetProfit))
-        else
-            notify("Target", "❌ Format tidak valid. Contoh: 5m / 500k / 5000000")
+        local digits = val:gsub("[^%d]", "")
+        local n = tonumber(digits)
+        if n and n > 0 then
+            Settings.ProgressTarget = n
+            refreshProgressBar()
+            notify("Progress", "🎯 Target baru: " .. formatMoney(n))
         end
     end
 })
 
+ProgressSection:Toggle({
+    Title    = "Censor Player Name",
+    Desc     = "Sembunyikan nama player di webhook untuk privasi.",
+    Icon     = "shield",
+    State    = false,
+    Callback = function(state)
+        Settings.CensorName = state
+        notify("Privacy", state and "🕶️ Nama disensor." or "👤 Nama asli ditampilkan.")
+    end
+})
+
+ProgressSection:Input({
+    Title       = "Custom Display Name",
+    Desc        = "Nama pengganti kalau sensor aktif. Kosongkan untuk auto-mask.",
+    Icon        = "user",
+    Value       = "",
+    Placeholder = "Player***",
+    Callback    = function(val)
+        Settings.CensoredName = (val or ""):gsub("^%s+", ""):gsub("%s+$", "")
+    end
+})
+
+-- ===== SECTION: ACTIONS =====
 local ActionSection = WebhookTab:Section({ Title = "Actions" })
 
 ActionSection:Button({
     Title    = "Send Test Report",
-    Desc     = "Kirim laporan sekarang untuk memverifikasi webhook.",
+    Desc     = "Kirim laporan sekarang untuk verifikasi webhook.",
     Icon     = "send",
     Callback = function()
         if WebhookURL == "" then
-            notify("Webhook", "❌ Masukkan Webhook URL terlebih dahulu.")
+            notify("Webhook", "❌ Isi Webhook URL dulu.")
             return
         end
         sendWebhook()
@@ -1920,8 +1913,24 @@ ActionSection:Button({
 })
 
 ActionSection:Button({
+    Title    = "Preview Embed (Console)",
+    Desc     = "Print payload JSON ke console untuk debugging.",
+    Icon     = "code",
+    Callback = function()
+        local preview = {
+            username   = "👑 King Akbar",
+            avatar_url = "https://cdn-icons-png.flaticon.com/512/1077/1077012.png",
+            embeds     = { buildReportEmbed() },
+        }
+        print("[King Akbar] 📋 Webhook Preview:\n" ..
+              Services.HttpService:JSONEncode(preview))
+        notify("Webhook", "📋 Preview di-print ke console (F9).")
+    end
+})
+
+ActionSection:Button({
     Title    = "Reset Session Stats",
-    Desc     = "Reset semua counter dan tracking balance ke nol.",
+    Desc     = "Reset semua counter & tracking balance.",
     Icon     = "rotate-ccw",
     Callback = function()
         Stats.moneyBefore = getMoney()
@@ -1929,7 +1938,7 @@ ActionSection:Button({
         Stats.deliveries  = 0
         Stats.farmTime    = 0
         Stats.startTime   = os.time()
-        notify("Session", "✅ Session stats have been reset.")
+        notify("Session", "✅ Session stats direset.")
     end
 })
 
@@ -1978,7 +1987,7 @@ InfoTab:Select()
 
 WindUI:Notify({
     Title    = "👑 KING AKBAR — DELIVERY SYSTEM",
-    Content  = "Simple mode loaded successfully.",
+    Content  = "Professional Premium Edition loaded successfully.",
     Duration = 5,
 })
 
